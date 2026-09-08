@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Empoderamientos</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#402c46;
+    --primary-dark:#2b1e30;
+    --primary-light:#6b4f74;
+    --lilac:#ece6f0;
+    --lilac2:#dcd1e3;
+    --gold:#c9a24b;
+    --gold-light:#e9d9ae;
+    --bg:#f6f4f8;
+    --card:#ffffff;
+    --border:#e4dfe8;
+    --text:#241a28;
+    --muted:#7c7085;
+    --critico:#7a2b4a;
+    --criticoBg:#f3e6ec;
+    --enmeta:#6b4f74;
+    --enmetaBg:#ece6f0;
+    --sobresaliente:#a8842f;
+    --sobresalienteBg:#faf3e3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',Arial,sans-serif;background:var(--bg);color:var(--text);}
+  h1,h2,h3,.brand-title{font-family:'Poppins',Arial,sans-serif;}
+
+  header{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 2px 10px rgba(64,44,70,0.25);
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .brand .logo{width:44px;height:44px;flex-shrink:0;object-fit:contain;}
+  .brand-title{font-size:26px;font-weight:700;letter-spacing:0.3px;margin:0;}
+  .header-right{font-size:11px;opacity:0.8;text-align:right;}
+
+  .container{padding:22px 28px;max-width:1400px;margin:0 auto;}
+
+  .controls{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:16px 18px;margin-bottom:20px;box-shadow:0 1px 3px rgba(64,44,70,0.06);
+  }
+  .controls-row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;}
+  .controls-row + .controls-row{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:11px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.4px;}
+  .field select,.field input{
+    padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;
+    background:#fff;color:var(--text);font-family:inherit;
+  }
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{
+    border:1.5px solid var(--primary);background:#fff;color:var(--primary);
+    padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+    transition:all .15s;
+  }
+  .chip:hover{background:var(--lilac);}
+  .chip.active{background:var(--primary);color:#fff;}
+  .chips-sm .chip{padding:5px 12px;font-size:12px;border-width:1px;color:var(--primary-light);border-color:var(--lilac2);}
+  .chips-sm .chip.active{background:var(--gold);border-color:var(--gold);color:#fff;}
+  .sucursal-panel{margin-top:0;max-height:0;opacity:0;overflow:hidden;transition:max-height .25s ease,opacity .2s ease,margin-top .25s ease;}
+  .sucursal-panel.open{max-height:200px;opacity:1;margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);}
+  .hint{font-size:12px;color:var(--muted);font-style:italic;}
+
+  .seg-sm{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .seg-sm button{border:none;background:#fff;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);border-right:1px solid var(--border);font-family:inherit;}
+  .seg-sm button:last-child{border-right:none;}
+  .seg-sm button.active{background:var(--primary);color:#fff;}
+
+  details.advanced summary{cursor:pointer;font-size:12px;color:var(--primary-light);font-weight:600;list-style:none;}
+  details.advanced .adv-body{display:flex;gap:14px;margin-top:10px;}
+
+  /* --- Gauge principal --- */
+  .gauge-card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:32px;
+    box-shadow:0 1px 3px rgba(64,44,70,0.06);margin-bottom:20px;
+  }
+  .gauge-wrap{position:relative;width:190px;height:190px;flex-shrink:0;}
+  .gauge-center{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .gauge-center .pct{font-size:34px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
+  .gauge-center .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;}
+  .gauge-info{display:flex;flex-direction:column;gap:4px;}
+  .gauge-title{font-size:16px;font-weight:600;color:var(--primary);font-family:'Poppins',sans-serif;margin-bottom:8px;}
+  .gauge-stats{display:flex;gap:28px;flex-wrap:wrap;}
+  .gauge-stats .num{display:block;font-size:26px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
+  .gauge-stats .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;}
+  .gauge-stats .sobresaliente .num{color:var(--sobresaliente);}
+
+  section{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;
+    margin-bottom:20px;box-shadow:0 1px 3px rgba(64,44,70,0.06);
+  }
+  section h2{margin:0 0 14px 0;font-size:15px;color:var(--primary-dark);font-weight:600;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media (max-width:900px){.two-col{grid-template-columns:1fr;}}
+
+  /* --- Grid de circulos (sucursal / area) --- */
+  .circle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:16px;}
+  .circle-item{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
+  .circle-canvas-wrap{position:relative;width:88px;height:88px;}
+  .circle-canvas-wrap .cpct{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
+  .circle-item .cname{font-size:12px;font-weight:600;color:var(--text);line-height:1.2;}
+  .circle-item .cvals{font-size:10.5px;color:var(--muted);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);}
+  th{background:var(--lilac);color:var(--primary-dark);cursor:pointer;user-select:none;white-space:nowrap;font-weight:600;}
+  tbody tr:hover{background:#faf8fb;}
+  .badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block;}
+  .badge.Critico{background:var(--criticoBg);color:var(--critico);}
+  .badge.Sobresaliente{background:var(--sobresalienteBg);color:var(--sobresaliente);}
+  .badge.EnMeta{background:var(--enmetaBg);color:var(--enmeta);}
+  .badge.SinDatos{background:#eee;color:#888;}
+  .table-wrap{overflow-x:auto;max-height:420px;overflow-y:auto;}
+  .loading,.error{padding:60px;text-align:center;color:var(--muted);}
+  .error{color:var(--critico);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <!-- Sube tu logo real como "logo.png" junto a este index.html en el repo de GitHub.
+         Si existe, se usa automaticamente; si no, se ve el icono de respaldo. -->
+    <img src="logo.png" alt="Logo" class="logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display:none;">
+      <polygon points="8,20 45,8 38,42" fill="#ffffff" stroke="#402c46" stroke-width="1.2"/>
+      <polygon points="45,8 70,32 38,42" fill="#c9a24b" stroke="#402c46" stroke-width="1.2"/>
+      <polygon points="8,20 38,42 15,48" fill="#dcd1e3" stroke="#402c46" stroke-width="1.2"/>
+      <polygon points="15,48 38,42 55,46 30,58" fill="#ffffff" stroke="#402c46" stroke-width="1.2"/>
+      <polygon points="38,42 70,32 60,52 55,46" fill="#6b4f74" stroke="#402c46" stroke-width="1.2"/>
+      <polygon points="30,58 55,46 60,52 40,92" fill="#c9a24b" stroke="#402c46" stroke-width="1.2"/>
+      <polygon points="60,52 78,40 70,58" fill="#dcd1e3" stroke="#402c46" stroke-width="1.2"/>
+    </svg>
+    <p class="brand-title">Empoderamientos</p>
+  </div>
+  <div class="header-right" id="updatedAt"></div>
+</header>
+
+<div class="container" id="app" style="display:none;">
+
+  <div class="controls">
+    <div class="controls-row">
+      <div class="field" style="flex:1;min-width:260px;">
+        <label>Grupo / Unidad de negocio</label>
+        <div class="chips" id="chipsGrupo">
+          <button class="chip" data-v="Vivo 47">Vivo 47</button>
+          <button class="chip" data-v="Easy Fit">Easy Fit</button>
+          <button class="chip" data-v="Oficina Central">Oficina Central</button>
+          <button class="chip" data-v="GEB">GEB</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Mes</label>
+        <select id="fMes"><option value="">Acumulado total</option></select>
+      </div>
+      <div class="field">
+        <label>Área</label>
+        <select id="fArea"><option value="">Todas</option></select>
+      </div>
+      <div class="field">
+        <label>Buscar colaborador</label>
+        <input type="text" id="fNombre" placeholder="Nombre...">
+      </div>
+      <div class="field">
+        <label>Estado</label>
+        <div class="seg-sm" id="segEstado">
+          <button data-v="" class="active">Todos</button>
+          <button data-v="meta">Cumplieron meta</button>
+          <button data-v="critico">Mejora</button>
+        </div>
+      </div>
+      <details class="advanced">
+        <summary>Ajustar umbrales ▾</summary>
+        <div class="adv-body">
+          <div class="field"><label>Mejora &lt;</label><input type="number" id="umbralCritico" value="70" style="width:60px;"></div>
+          <div class="field"><label>Sobresaliente &gt;</label><input type="number" id="umbralSobresaliente" value="120" style="width:60px;"></div>
+        </div>
+      </details>
+    </div>
+    <div class="sucursal-panel" id="sucursalPanel">
+      <div class="field" style="flex:1;">
+        <label>Sucursal particular</label>
+        <div class="chips chips-sm" id="chipsSucursal"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gauge-card">
+    <div class="gauge-wrap"><canvas id="gauge"></canvas>
+      <div class="gauge-center"><div class="pct" id="gaugePct">-</div><div class="lbl">% Cumplimiento</div></div>
+    </div>
+    <div class="gauge-info">
+      <div class="gauge-title" id="gaugeTitle">Todas las sucursales</div>
+      <div class="gauge-stats">
+        <div><span class="num" id="statTotal">-</span><span class="lbl">Total Empoderamientos</span></div>
+        <div class="sobresaliente"><span class="num" id="statCumplieron">-</span><span class="lbl">Cumplieron / superaron meta</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Acumulado Mensual</h2>
+    <canvas id="chartLinea" height="80"></canvas>
+  </section>
+
+  <section id="secSucursal">
+    <h2 id="tituloSucursal">Meta por Sucursal</h2>
+    <div class="circle-grid" id="circSucursal"></div>
+  </section>
+
+  <section id="secArea">
+    <h2>Meta por Área</h2>
+    <p class="hint" id="areaHint">Selecciona un grupo / unidad de negocio arriba para ver el detalle por área.</p>
+    <div class="circle-grid" id="circArea"></div>
+  </section>
+
+  <section>
+    <h2>Detalle por Colaborador</h2>
+    <div class="table-wrap"><table id="tblColaboradores"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+</div>
+
+<div class="loading" id="loading">Cargando datos…</div>
+<div class="error" id="errorBox" style="display:none;"></div>
+
+<script>
+// ======= CONFIGURACION: lee directo de Google Sheets (enlace publico "Cualquiera con el enlace - Lector") =======
+const SPREADSHEET_ID = "1UGjqpgMLrWk7QHMDy8rTkPTiAuzGUgJZ47uWSqDdho4";
+const MESES_A_LEER = 8; // Ene-Ago 2026
+
+// Una entrada por cada hoja de sucursal/oficina. "sheet" debe ser IDENTICO al nombre real de la
+// pestaña en tu Google Sheet (incluye espacios raros como " NAC" o "OFC Easy Fit ").
+// layout 'A' = tiene columna Rol (B Nombre, C Unidad, D Rol, E Departamento, F Meta, G.. meses)
+// layout 'B' = sin columna Rol (B Nombre, C Unidad, D Departamento, E Meta, F.. meses)
+const SHEETS_CONFIG = [
+  { sheet: 'ALEIRA',          sucursal: 'Aleira',                   grupo: 'Easy Fit',        layout: 'A' },
+  { sheet: 'CAÑADAS',         sucursal: 'Cañadas',                  grupo: 'Easy Fit',        layout: 'A' },
+  { sheet: 'AVILA CAMACHO',   sucursal: 'Ávila Camacho',            grupo: 'Easy Fit',        layout: 'A' },
+  { sheet: 'ITESO',           sucursal: 'Iteso',                    grupo: 'Easy Fit',        layout: 'A' },
+  { sheet: 'CENTER',          sucursal: 'Center',                   grupo: 'Vivo 47',         layout: 'A' },
+  { sheet: 'VR',              sucursal: 'Valle Real',               grupo: 'Vivo 47',         layout: 'A' },
+  { sheet: 'GMT',             sucursal: 'Gourmetería',              grupo: 'Vivo 47',         layout: 'A' },
+  { sheet: ' NAC',            sucursal: 'Naciones Unidas',          grupo: 'Vivo 47',         layout: 'A' },
+  { sheet: 'OFC 47',          sucursal: 'Oficina Central Vivo47',   grupo: 'Oficina Central', layout: 'B' },
+  { sheet: ' GEB',            sucursal: 'GEB',                      grupo: 'GEB',             layout: 'B' },
+  { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', layout: 'B' },
+];
+
+function csvUrl(sheetName){
+  return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+}
+
+// Parser CSV simple (respeta comillas de Google Sheets)
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else inQuotes=false; }
+      else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* ignorar */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+function parseSheetRows(rows, cfg){
+  const headerIdx = rows.findIndex(r => (r[1]||'').trim() === 'Nombre');
+  if(headerIdx === -1) return [];
+  const registros = [];
+  for(let i=headerIdx+1;i<rows.length;i++){
+    const r = rows[i];
+    const nombre = (r[1]||'').trim();
+    if(!nombre) break; // fin de datos (llegamos a la fila Suma/Avance)
+    let rol, depto, meta, monthStart;
+    if(cfg.layout === 'A'){ rol=(r[3]||'').trim(); depto=(r[4]||'').trim(); meta=Number(r[5])||0; monthStart=6; }
+    else { rol='N/A'; depto=(r[3]||'').trim(); meta=Number(r[4])||0; monthStart=5; }
+    const meses = [];
+    for(let m=0;m<MESES_A_LEER;m++){
+      const v = r[monthStart+m];
+      meses.push(v===undefined || v==='' ? null : Number(v));
+    }
+    registros.push({ sucursal: cfg.sucursal, grupo: cfg.grupo, nombre, rol, departamento: depto, meta, meses });
+  }
+  return registros;
+}
+
+async function cargarDesdeSheets(){
+  const resultados = await Promise.all(SHEETS_CONFIG.map(cfg =>
+    fetch(csvUrl(cfg.sheet))
+      .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(text => parseSheetRows(parseCSV(text), cfg))
+      .catch(err => { console.warn('No se pudo leer la hoja', cfg.sheet, err); return []; })
+  ));
+  return {
+    generadoEn: new Date().toISOString(),
+    meses: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago'].slice(0, MESES_A_LEER),
+    registros: resultados.flat(),
+  };
+}
+// ==================================================================================================
+
+// Listas curadas de areas por grupo (para el filtro de Area)
+const AREAS_POR_GRUPO = {
+  'Vivo 47': ['Deportes','Comercial','Kids','Administración','Orden y Limpieza','Mantenimiento','Acuática'],
+  'Easy Fit': ['Operación','Administración','Orden y Limpieza','Deportes','Mantenimiento'],
+  'Oficina Central': ['Capital Humano','Comercial','Deportes','Administración','Dirección','Mantenimiento'],
+  'GEB': ['Universidad y DO','Dirección de Capital Humano','Nominas','Compras','Contabilidad y Finanzas','Sistemas','Mantenimiento','Dirección Comercial'],
+};
+
+let RAW = null;
+let estadoFiltro = '';
+let grupoSel = [];
+let sucSel = [];
+let charts = {};
+let miniCharts = [];
+
+function pct(n){ return n === null || n === undefined || isNaN(n) ? '-' : (n*100).toFixed(0) + '%'; }
+function num(n){ return n === null || n === undefined ? '-' : Math.round(n); }
+function norm(s){ return (s||'').toString().trim().toLowerCase(); }
+
+function clasificar(avance, critico, sobresaliente){
+  if (avance === null || avance === undefined) return 'Sin datos';
+  if (avance < critico) return 'Critico';
+  if (avance > sobresaliente) return 'Sobresaliente';
+  return 'En meta';
+}
+function colorClasif(clasif){
+  if(clasif==='Critico') return 'critico';
+  if(clasif==='Sobresaliente') return 'sobresaliente';
+  return 'enmeta';
+}
+function displayClasif(clasif){
+  return clasif === 'Critico' ? 'Mejora' : clasif;
+}
+const CLASIF_COLOR = {critico:'#7a2b4a', sobresaliente:'#c9a24b', enmeta:'#402c46'};
+
+async function cargar(){
+  try{
+    RAW = await cargarDesdeSheets();
+    if(RAW.registros.length === 0) throw new Error('No se leyó ningún colaborador. Revisa que el Sheet esté compartido como "Cualquiera con el enlace - Lector" y que los nombres de hoja en SHEETS_CONFIG coincidan.');
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('updatedAt').textContent =
+      'Actualizado: ' + new Date(RAW.generadoEn).toLocaleString('es-MX');
+    poblarFiltros();
+    render();
+  }catch(err){
+    document.getElementById('loading').style.display = 'none';
+    const box = document.getElementById('errorBox');
+    box.style.display = 'block';
+    box.textContent = 'No se pudo cargar el dashboard. Verifica que el Google Sheet esté compartido como "Cualquiera con el enlace - Lector". Detalle: ' + err.message;
+  }
+}
+
+function poblarFiltros(){
+  const fm = document.getElementById('fMes');
+  RAW.meses.forEach((m,i) => fm.insertAdjacentHTML('beforeend', `<option value="${i}">${m}</option>`));
+
+  ['fMes','fArea','fNombre','umbralCritico','umbralSobresaliente'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', render);
+  });
+
+  document.querySelectorAll('#chipsGrupo .chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const v = chip.dataset.v;
+      if(grupoSel.includes(v)){ grupoSel = grupoSel.filter(g=>g!==v); chip.classList.remove('active'); }
+      else { grupoSel.push(v); chip.classList.add('active'); }
+      sucSel = []; // al cambiar de grupo, se resetea la sucursal particular
+      actualizarPanelSucursales();
+      actualizarAreas();
+      render();
+    });
+  });
+
+  document.querySelectorAll('#segEstado button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#segEstado button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      estadoFiltro = btn.dataset.v;
+      render();
+    });
+  });
+
+  actualizarPanelSucursales();
+  actualizarAreas();
+}
+
+function actualizarPanelSucursales(){
+  const panel = document.getElementById('sucursalPanel');
+  const cs = document.getElementById('chipsSucursal');
+  if(grupoSel.length === 0){
+    panel.classList.remove('open');
+    cs.innerHTML = '';
+    return;
+  }
+  const sucursales = [...new Set(RAW.registros.filter(r=>grupoSel.includes(r.grupo)).map(r=>r.sucursal))].sort();
+  cs.innerHTML = '';
+  sucursales.forEach(s => cs.insertAdjacentHTML('beforeend', `<button class="chip" data-v="${s}">${s}</button>`));
+  document.querySelectorAll('#chipsSucursal .chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const v = chip.dataset.v;
+      if(sucSel.includes(v)){ sucSel = sucSel.filter(s=>s!==v); chip.classList.remove('active'); }
+      else { sucSel.push(v); chip.classList.add('active'); }
+      render();
+    });
+  });
+  panel.classList.add('open');
+}
+
+function areasDisponibles(){
+  if(grupoSel.length === 0){
+    const todas = new Set();
+    Object.values(AREAS_POR_GRUPO).forEach(list => list.forEach(a=>todas.add(a)));
+    return [...todas];
+  }
+  const set = new Set();
+  grupoSel.forEach(g => (AREAS_POR_GRUPO[g]||[]).forEach(a=>set.add(a)));
+  return [...set];
+}
+
+function actualizarAreas(){
+  const fa = document.getElementById('fArea');
+  const actual = fa.value;
+  fa.innerHTML = '<option value="">Todas</option>';
+  areasDisponibles().forEach(a => fa.insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`));
+  if([...fa.options].some(o=>o.value===actual)) fa.value = actual;
+}
+
+function mesHasta(){
+  const v = document.getElementById('fMes').value;
+  return v === '' ? RAW.meses.length - 1 : Number(v);
+}
+
+function getFiltered(){
+  const critico = Number(document.getElementById('umbralCritico').value) / 100;
+  const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
+  const fArea = document.getElementById('fArea').value;
+  const fNombre = document.getElementById('fNombre').value.trim().toLowerCase();
+  const mHasta = mesHasta();
+
+  return RAW.registros
+    .filter(r => (grupoSel.length === 0 || grupoSel.includes(r.grupo)))
+    .filter(r => (sucSel.length === 0 || sucSel.includes(r.sucursal)))
+    .filter(r => (!fArea || norm(r.departamento) === norm(fArea)))
+    .filter(r => (!fNombre || r.nombre.toLowerCase().includes(fNombre)))
+    .map(r => {
+      const mesesSel = r.meses.slice(0, mHasta + 1);
+      const capturados = mesesSel.filter(v => v !== null);
+      const totalReal = capturados.reduce((a,b)=>a+b, 0);
+      const metaAcumulada = r.meta * capturados.length;
+      const avance = metaAcumulada > 0 ? totalReal / metaAcumulada : null;
+      const clasificacion = clasificar(avance, critico, sobresaliente);
+      return {...r, totalReal, metaAcumulada, avance, clasificacion};
+    })
+    .filter(r => {
+      if (estadoFiltro === 'meta') return r.avance !== null && r.avance >= 1;
+      if (estadoFiltro === 'critico') return r.clasificacion === 'Critico';
+      return true;
+    });
+}
+
+function agrupar(registros, campo){
+  const map = {};
+  registros.forEach(r => {
+    const k = r[campo] || '(sin dato)';
+    if(!map[k]) map[k] = {nombre:k, colaboradores:0, total:0, meta:0};
+    map[k].colaboradores++;
+    map[k].total += r.totalReal;
+    map[k].meta += r.metaAcumulada;
+  });
+  const critico = Number(document.getElementById('umbralCritico').value) / 100;
+  const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
+  return Object.values(map).map(g => {
+    const avance = g.meta > 0 ? g.total/g.meta : null;
+    return {...g, avance, clasificacion: clasificar(avance, critico, sobresaliente)};
+  });
+}
+
+function badge(clasif){
+  return `<span class="badge ${clasif.replace(' ','')}">${displayClasif(clasif)}</span>`;
+}
+function renderTable(id, headers, rows){
+  const table = document.getElementById(id);
+  table.querySelector('thead').innerHTML = '<tr>' + headers.map(h=>`<th>${h}</th>`).join('') + '</tr>';
+  table.querySelector('tbody').innerHTML = rows.join('');
+}
+
+function destroyMiniCharts(){
+  miniCharts.forEach(c => c.destroy());
+  miniCharts = [];
+}
+
+function renderCircleGrid(containerId, grupos){
+  const el = document.getElementById(containerId);
+  if(grupos.length === 0){ el.innerHTML = '<p class="hint">Sin datos para esta selección.</p>'; return; }
+  el.innerHTML = grupos.map((g,i) => `
+    <div class="circle-item">
+      <div class="circle-canvas-wrap"><canvas id="${containerId}-c${i}"></canvas><div class="cpct">${pct(g.avance)}</div></div>
+      <div class="cname">${g.nombre}</div>
+      <div class="cvals">${num(g.total)} / ${num(g.meta)}</div>
+    </div>`).join('');
+  grupos.forEach((g,i) => {
+    const ctx = document.getElementById(`${containerId}-c${i}`).getContext('2d');
+    const p = g.avance === null ? 0 : Math.min(1, g.avance);
+    const color = CLASIF_COLOR[colorClasif(g.clasificacion)];
+    const c = new Chart(ctx, {
+      type:'doughnut',
+      data:{ datasets:[{ data:[p, 1-p], backgroundColor:[color, '#ece6f0'], borderWidth:0 }] },
+      options:{ cutout:'72%', rotation:-90, circumference:360, plugins:{tooltip:{enabled:false}, legend:{display:false}}, animation:{duration:300} }
+    });
+    miniCharts.push(c);
+  });
+}
+
+function render(){
+  const registros = getFiltered();
+  const mHasta = mesHasta();
+
+  const totalReal = registros.reduce((a,r)=>a+r.totalReal,0);
+  const totalMeta = registros.reduce((a,r)=>a+r.metaAcumulada,0);
+  const avanceGeneral = totalMeta>0 ? totalReal/totalMeta : null;
+  const cumplieron = registros.filter(r=>r.avance!==null && r.avance>=1).length;
+
+  document.getElementById('statTotal').textContent = num(totalReal);
+  document.getElementById('statCumplieron').textContent = cumplieron;
+
+  let gaugeTitle = 'Todas las sucursales';
+  if (sucSel.length === 1) gaugeTitle = sucSel[0];
+  else if (sucSel.length > 1) gaugeTitle = sucSel.length + ' sucursales seleccionadas';
+  else if (grupoSel.length) gaugeTitle = grupoSel.join(' + ');
+  document.getElementById('gaugeTitle').textContent = gaugeTitle;
+  document.getElementById('gaugePct').textContent = pct(avanceGeneral);
+  drawGauge(avanceGeneral, clasificar(avanceGeneral, Number(document.getElementById('umbralCritico').value)/100, Number(document.getElementById('umbralSobresaliente').value)/100));
+
+  destroyMiniCharts();
+
+  // Meta por Sucursal: si no hay grupo elegido, todas; si hay grupo, solo las de ese grupo
+  document.getElementById('tituloSucursal').textContent = grupoSel.length ? 'Meta por Sucursal (' + grupoSel.join(' + ') + ')' : 'Meta por Sucursal (general)';
+  const porSucursal = agrupar(registros, 'sucursal').sort((a,b)=>b.total-a.total);
+  renderCircleGrid('circSucursal', porSucursal);
+
+  // Meta por Area: solo si hay grupo seleccionado
+  const areaHint = document.getElementById('areaHint');
+  const circArea = document.getElementById('circArea');
+  if(grupoSel.length === 0){
+    areaHint.style.display = 'block';
+    circArea.innerHTML = '';
+  } else {
+    areaHint.style.display = 'none';
+    const porArea = agrupar(registros, 'departamento').sort((a,b)=>b.total-a.total);
+    renderCircleGrid('circArea', porArea);
+  }
+
+  const detalle = [...registros].sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
+  renderTable('tblColaboradores',
+    ['Nombre','Sucursal','Rol','Área','Meta/mes','Total Real','% Avance','Clasificación'],
+    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}</td><td>${r.departamento}</td><td>${r.meta}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td></tr>`));
+
+  const mesesLabels = RAW.meses.slice(0, mHasta+1);
+  const acumPorMes = mesesLabels.map((_, idx) => {
+    let suma = 0;
+    registros.forEach(r => { const v = r.meses[idx]; if (v !== null) suma += v; });
+    return suma;
+  });
+  let acumulado = 0;
+  const acumulativo = acumPorMes.map(v => acumulado += v);
+  drawLinea(mesesLabels, acumulativo);
+}
+
+function drawGauge(avance, clasif){
+  const ctx = document.getElementById('gauge').getContext('2d');
+  if(charts.gauge) charts.gauge.destroy();
+  const p = avance === null ? 0 : Math.min(1, avance);
+  const colorMap = {Critico:'#7a2b4a', Sobresaliente:'#c9a24b', 'En meta':'#402c46', 'Sin datos':'#cccccc'};
+  charts.gauge = new Chart(ctx, {
+    type:'doughnut',
+    data:{ datasets:[{ data:[p, 1-p], backgroundColor:[colorMap[clasif]||'#402c46', '#ece6f0'], borderWidth:0 }] },
+    options:{ cutout:'78%', rotation:-90, circumference:360, plugins:{tooltip:{enabled:false}, legend:{display:false}} }
+  });
+}
+
+function drawLinea(labels, data){
+  const ctx = document.getElementById('chartLinea').getContext('2d');
+  if(charts.linea) charts.linea.destroy();
+  charts.linea = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{
+      label:'Empoderamientos acumulados', data,
+      borderColor:'#402c46', backgroundColor:'rgba(201,162,75,0.18)',
+      borderWidth:3, pointBackgroundColor:'#c9a24b', pointBorderColor:'#402c46', pointRadius:2.5, pointHoverRadius:5, fill:true, tension:0.3
+    }]},
+    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
+}
+
+cargar();
+</script>
+</body>
+</html>
