@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Empoderamientos</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Livvic:wght@400;600;700&family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --primary:#402c46;
@@ -14,7 +14,6 @@
     --lilac:#ece6f0;
     --lilac2:#dcd1e3;
     --gold:#c9a24b;
-    --gold-light:#e9d9ae;
     --bg:#f6f4f8;
     --card:#ffffff;
     --border:#e4dfe8;
@@ -26,20 +25,25 @@
     --enmetaBg:#ece6f0;
     --sobresaliente:#a8842f;
     --sobresalienteBg:#faf3e3;
+    --vivo47:#60a700;
+    --easyfit:#f37f1b;
+    --geb:#402c46;
+    --oficina:#402c46;
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Inter',Arial,sans-serif;background:var(--bg);color:var(--text);}
-  h1,h2,h3,.brand-title{font-family:'Poppins',Arial,sans-serif;}
+  h1,h2,h3{font-family:'Poppins',Arial,sans-serif;}
+  .brand-title{font-family:'Livvic',Arial,sans-serif;font-weight:700;}
 
   header{
     background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
     color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;
-    box-shadow:0 2px 10px rgba(64,44,70,0.25);
+    box-shadow:0 2px 10px rgba(64,44,70,0.25);gap:20px;flex-wrap:wrap;
   }
   .brand{display:flex;align-items:center;gap:14px;}
-  .brand .logo{width:44px;height:44px;flex-shrink:0;object-fit:contain;}
-  .brand-title{font-size:26px;font-weight:700;letter-spacing:0.3px;margin:0;}
-  .header-right{font-size:11px;opacity:0.8;text-align:right;}
+  .brand .logo{width:46px;height:46px;flex-shrink:0;object-fit:contain;border-radius:8px;background:#fff;padding:3px;}
+  .brand-title{font-size:27px;letter-spacing:0.3px;margin:0;}
+  .header-msg{font-family:'Livvic',Arial,sans-serif;font-weight:400;font-size:14px;opacity:0.88;font-style:italic;text-align:right;max-width:340px;}
 
   .container{padding:22px 28px;max-width:1400px;margin:0 auto;}
 
@@ -62,10 +66,10 @@
     padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
     transition:all .15s;
   }
-  .chip:hover{background:var(--lilac);}
-  .chip.active{background:var(--primary);color:#fff;}
+  .chip:hover{filter:brightness(0.97);}
+  .chip.active{color:#fff;}
   .chips-sm .chip{padding:5px 12px;font-size:12px;border-width:1px;color:var(--primary-light);border-color:var(--lilac2);}
-  .chips-sm .chip.active{background:var(--gold);border-color:var(--gold);color:#fff;}
+  .chips-sm .chip.active{color:#fff;}
   .sucursal-panel{margin-top:0;max-height:0;opacity:0;overflow:hidden;transition:max-height .25s ease,opacity .2s ease,margin-top .25s ease;}
   .sucursal-panel.open{max-height:200px;opacity:1;margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);}
   .hint{font-size:12px;color:var(--muted);font-style:italic;}
@@ -78,32 +82,38 @@
   details.advanced summary{cursor:pointer;font-size:12px;color:var(--primary-light);font-weight:600;list-style:none;}
   details.advanced .adv-body{display:flex;gap:14px;margin-top:10px;}
 
-  /* --- Gauge principal --- */
-  .gauge-card{
-    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;
-    display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:32px;
+  /* --- Resumen principal (logo + medidor horizontal + texto) --- */
+  .summary-card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 26px;
+    display:flex;align-items:center;gap:26px;flex-wrap:wrap;
     box-shadow:0 1px 3px rgba(64,44,70,0.06);margin-bottom:20px;
   }
-  .gauge-wrap{position:relative;width:190px;height:190px;flex-shrink:0;}
-  .gauge-center{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-  .gauge-center .pct{font-size:34px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
-  .gauge-center .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;}
-  .gauge-info{display:flex;flex-direction:column;gap:4px;}
-  .gauge-title{font-size:16px;font-weight:600;color:var(--primary);font-family:'Poppins',sans-serif;margin-bottom:8px;}
-  .gauge-stats{display:flex;gap:28px;flex-wrap:wrap;}
-  .gauge-stats .num{display:block;font-size:26px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
-  .gauge-stats .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;}
-  .gauge-stats .sobresaliente .num{color:var(--sobresaliente);}
+  .summary-logo{width:76px;height:76px;object-fit:contain;flex-shrink:0;}
+  .summary-body{flex:1;min-width:280px;}
+  .summary-title{font-size:16px;font-weight:600;color:var(--primary);font-family:'Poppins',sans-serif;margin-bottom:10px;}
+  .meter-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .meter-track{position:relative;flex:1;height:22px;background:var(--lilac);border-radius:11px;overflow:hidden;}
+  .meter-fill{height:100%;border-radius:11px 0 0 11px;transition:width .3s;}
+  .meter-marker{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--primary-dark);opacity:.55;}
+  .meter-marker .mm-label{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--muted);}
+  .meter-pct{font-size:22px;font-weight:700;font-family:'Poppins',sans-serif;color:var(--primary-dark);min-width:64px;text-align:right;}
+  .summary-stats{display:flex;gap:28px;flex-wrap:wrap;}
+  .summary-stats .stat-item .num{display:block;font-size:22px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
+  .summary-stats .stat-item .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;}
+  .summary-stats .stat-item.top .num{color:var(--sobresaliente);}
+  .summary-stats .stat-item.low .num{color:var(--critico);}
 
   section{
     background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;
     margin-bottom:20px;box-shadow:0 1px 3px rgba(64,44,70,0.06);
   }
   section h2{margin:0 0 14px 0;font-size:15px;color:var(--primary-dark);font-weight:600;}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-  @media (max-width:900px){.two-col{grid-template-columns:1fr;}}
 
-  /* --- Grid de circulos (sucursal / area) --- */
+  /* --- Grid de circulos --- */
+  .grupo-block{margin-bottom:18px;}
+  .grupo-block:last-child{margin-bottom:0;}
+  .grupo-block-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;
+    padding-bottom:6px;border-bottom:2px solid var(--border);}
   .circle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:16px;}
   .circle-item{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
   .circle-canvas-wrap{position:relative;width:88px;height:88px;}
@@ -129,21 +139,10 @@
 
 <header>
   <div class="brand">
-    <!-- Sube tu logo real como "logo.png" junto a este index.html en el repo de GitHub.
-         Si existe, se usa automaticamente; si no, se ve el icono de respaldo. -->
-    <img src="logo.png" alt="Logo" class="logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-    <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display:none;">
-      <polygon points="8,20 45,8 38,42" fill="#ffffff" stroke="#402c46" stroke-width="1.2"/>
-      <polygon points="45,8 70,32 38,42" fill="#c9a24b" stroke="#402c46" stroke-width="1.2"/>
-      <polygon points="8,20 38,42 15,48" fill="#dcd1e3" stroke="#402c46" stroke-width="1.2"/>
-      <polygon points="15,48 38,42 55,46 30,58" fill="#ffffff" stroke="#402c46" stroke-width="1.2"/>
-      <polygon points="38,42 70,32 60,52 55,46" fill="#6b4f74" stroke="#402c46" stroke-width="1.2"/>
-      <polygon points="30,58 55,46 60,52 40,92" fill="#c9a24b" stroke="#402c46" stroke-width="1.2"/>
-      <polygon points="60,52 78,40 70,58" fill="#dcd1e3" stroke="#402c46" stroke-width="1.2"/>
-    </svg>
+    <img src="Logo GEB Encabezado.jpg" alt="Logo" class="logo">
     <p class="brand-title">Empoderamientos</p>
   </div>
-  <div class="header-right" id="updatedAt"></div>
+  <div class="header-msg">Gracias por amar, cuidar y servir al otro</div>
 </header>
 
 <div class="container" id="app" style="display:none;">
@@ -195,15 +194,18 @@
     </div>
   </div>
 
-  <div class="gauge-card">
-    <div class="gauge-wrap"><canvas id="gauge"></canvas>
-      <div class="gauge-center"><div class="pct" id="gaugePct">-</div><div class="lbl">% Cumplimiento</div></div>
-    </div>
-    <div class="gauge-info">
-      <div class="gauge-title" id="gaugeTitle">Todas las sucursales</div>
-      <div class="gauge-stats">
-        <div><span class="num" id="statTotal">-</span><span class="lbl">Total Empoderamientos</span></div>
-        <div class="sobresaliente"><span class="num" id="statCumplieron">-</span><span class="lbl">Cumplieron / superaron meta</span></div>
+  <div class="summary-card">
+    <img class="summary-logo" id="summaryLogo" style="display:none;">
+    <div class="summary-body">
+      <div class="summary-title" id="summaryTitle">Todas las sucursales</div>
+      <div class="meter-row">
+        <div class="meter-track"><div class="meter-fill" id="meterFill"></div><div class="meter-marker" style="left:50%;"><span class="mm-label">100%</span></div></div>
+        <div class="meter-pct" id="meterPct">-</div>
+      </div>
+      <div class="summary-stats">
+        <div class="stat-item"><span class="num" id="statTotal">-</span><span class="lbl">Total Empoderamientos</span></div>
+        <div class="stat-item top"><span class="num" id="statTop">-</span><span class="lbl" id="statTopLbl">Área más sobresaliente</span></div>
+        <div class="stat-item low"><span class="num" id="statLow">-</span><span class="lbl" id="statLowLbl">Área más baja</span></div>
       </div>
     </div>
   </div>
@@ -214,14 +216,15 @@
   </section>
 
   <section id="secSucursal">
-    <h2 id="tituloSucursal">Meta por Sucursal</h2>
-    <div class="circle-grid" id="circSucursal"></div>
+    <h2>Meta por Sucursal</h2>
+    <div id="bloqueSucursal"></div>
   </section>
 
   <section id="secArea">
     <h2>Meta por Área</h2>
     <p class="hint" id="areaHint">Selecciona un grupo / unidad de negocio arriba para ver el detalle por área.</p>
     <div class="circle-grid" id="circArea"></div>
+    <p class="hint" id="sinDatosHint" style="display:none;margin-top:10px;"></p>
   </section>
 
   <section>
@@ -237,12 +240,8 @@
 <script>
 // ======= CONFIGURACION: lee directo de Google Sheets (enlace publico "Cualquiera con el enlace - Lector") =======
 const SPREADSHEET_ID = "1UGjqpgMLrWk7QHMDy8rTkPTiAuzGUgJZ47uWSqDdho4";
-const MESES_A_LEER = 8; // Ene-Ago 2026
+const MESES_A_LEER = 9; // Ene-Sep (mes en curso incluido)
 
-// Una entrada por cada hoja de sucursal/oficina. "sheet" debe ser IDENTICO al nombre real de la
-// pestaña en tu Google Sheet (incluye espacios raros como " NAC" o "OFC Easy Fit ").
-// layout 'A' = tiene columna Rol (B Nombre, C Unidad, D Rol, E Departamento, F Meta, G.. meses)
-// layout 'B' = sin columna Rol (B Nombre, C Unidad, D Departamento, E Meta, F.. meses)
 const SHEETS_CONFIG = [
   { sheet: 'ALEIRA',          sucursal: 'Aleira',                   grupo: 'Easy Fit',        layout: 'A' },
   { sheet: 'CAÑADAS',         sucursal: 'Cañadas',                  grupo: 'Easy Fit',        layout: 'A' },
@@ -257,11 +256,28 @@ const SHEETS_CONFIG = [
   { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', layout: 'B' },
 ];
 
+const AREAS_POR_GRUPO = {
+  'Vivo 47': ['Deportes','Comercial','Kids','Administración','Orden y Limpieza','Mantenimiento','Acuática'],
+  'Easy Fit': ['Operación','Administración','Orden y Limpieza','Deportes','Mantenimiento'],
+  'Oficina Central': ['Capital Humano','Comercial','Deportes','Administración','Dirección','Mantenimiento'],
+  'GEB': ['Universidad y DO','Dirección de Capital Humano','Nominas','Compras','Contabilidad y Finanzas','Sistemas','Mantenimiento','Dirección Comercial'],
+};
+
+const GRUPO_COLOR = { 'Vivo 47': '#60a700', 'Easy Fit': '#f37f1b', 'Oficina Central': '#402c46', 'GEB': '#402c46' };
+
+// Logos disponibles (archivos junto a este index.html en el repo)
+const LOGO_GRUPO = { 'Vivo 47': 'Logo OFC.png', 'Easy Fit': 'Logo easy fit.png', 'GEB': 'Logo GEB.png' };
+const LOGO_SUCURSAL = {
+  'Valle Real': 'Logo Valle Real.png',
+  'Gourmetería': 'Logo Gourmetería.png',
+  'Naciones Unidas': 'Logo Naciones Unidas.png',
+  'Center': 'Logo Center.png',
+  'GEB': 'Logo GEB.png',
+};
+
 function csvUrl(sheetName){
   return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
 }
-
-// Parser CSV simple (respeta comillas de Google Sheets)
 function parseCSV(text){
   const rows = [];
   let row = [], field = '', inQuotes = false;
@@ -273,7 +289,7 @@ function parseCSV(text){
     } else {
       if(c === '"') inQuotes = true;
       else if(c === ','){ row.push(field); field=''; }
-      else if(c === '\r'){ /* ignorar */ }
+      else if(c === '\r'){ }
       else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
       else field += c;
     }
@@ -281,7 +297,6 @@ function parseCSV(text){
   if(field.length || row.length){ row.push(field); rows.push(row); }
   return rows;
 }
-
 function parseSheetRows(rows, cfg){
   const headerIdx = rows.findIndex(r => (r[1]||'').trim() === 'Nombre');
   if(headerIdx === -1) return [];
@@ -289,7 +304,7 @@ function parseSheetRows(rows, cfg){
   for(let i=headerIdx+1;i<rows.length;i++){
     const r = rows[i];
     const nombre = (r[1]||'').trim();
-    if(!nombre) break; // fin de datos (llegamos a la fila Suma/Avance)
+    if(!nombre) break;
     let rol, depto, meta, monthStart;
     if(cfg.layout === 'A'){ rol=(r[3]||'').trim(); depto=(r[4]||'').trim(); meta=Number(r[5])||0; monthStart=6; }
     else { rol='N/A'; depto=(r[3]||'').trim(); meta=Number(r[4])||0; monthStart=5; }
@@ -302,7 +317,6 @@ function parseSheetRows(rows, cfg){
   }
   return registros;
 }
-
 async function cargarDesdeSheets(){
   const resultados = await Promise.all(SHEETS_CONFIG.map(cfg =>
     fetch(csvUrl(cfg.sheet))
@@ -310,21 +324,14 @@ async function cargarDesdeSheets(){
       .then(text => parseSheetRows(parseCSV(text), cfg))
       .catch(err => { console.warn('No se pudo leer la hoja', cfg.sheet, err); return []; })
   ));
+  const MESES_NOMBRE = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   return {
     generadoEn: new Date().toISOString(),
-    meses: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago'].slice(0, MESES_A_LEER),
+    meses: MESES_NOMBRE.slice(0, MESES_A_LEER),
     registros: resultados.flat(),
   };
 }
 // ==================================================================================================
-
-// Listas curadas de areas por grupo (para el filtro de Area)
-const AREAS_POR_GRUPO = {
-  'Vivo 47': ['Deportes','Comercial','Kids','Administración','Orden y Limpieza','Mantenimiento','Acuática'],
-  'Easy Fit': ['Operación','Administración','Orden y Limpieza','Deportes','Mantenimiento'],
-  'Oficina Central': ['Capital Humano','Comercial','Deportes','Administración','Dirección','Mantenimiento'],
-  'GEB': ['Universidad y DO','Dirección de Capital Humano','Nominas','Compras','Contabilidad y Finanzas','Sistemas','Mantenimiento','Dirección Comercial'],
-};
 
 let RAW = null;
 let estadoFiltro = '';
@@ -351,16 +358,29 @@ function colorClasif(clasif){
 function displayClasif(clasif){
   return clasif === 'Critico' ? 'Mejora' : clasif;
 }
-const CLASIF_COLOR = {critico:'#7a2b4a', sobresaliente:'#c9a24b', enmeta:'#402c46'};
+
+// Genera una variante (mas clara/oscura) de un color base para diferenciar items dentro del mismo grupo
+function shade(hex, lum){
+  hex = hex.replace('#','');
+  let rgb = [0,1,2].map(i=>parseInt(hex.substr(i*2,2),16));
+  rgb = rgb.map(c=>{
+    const v = lum<0 ? c*(1+lum) : c+(255-c)*lum;
+    return Math.max(0,Math.min(255,Math.round(v)));
+  });
+  return '#'+rgb.map(c=>c.toString(16).padStart(2,'0')).join('');
+}
+function shadeForIndex(baseColor, i, n){
+  if(n<=1) return baseColor;
+  const steps = [-0.32,-0.16,0,0.18,0.34];
+  return shade(baseColor, steps[i % steps.length]);
+}
 
 async function cargar(){
   try{
     RAW = await cargarDesdeSheets();
-    if(RAW.registros.length === 0) throw new Error('No se leyó ningún colaborador. Revisa que el Sheet esté compartido como "Cualquiera con el enlace - Lector" y que los nombres de hoja en SHEETS_CONFIG coincidan.');
+    if(RAW.registros.length === 0) throw new Error('No se leyó ningún colaborador. Revisa que el Sheet esté compartido como "Cualquiera con el enlace - Lector".');
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display = 'block';
-    document.getElementById('updatedAt').textContent =
-      'Actualizado: ' + new Date(RAW.generadoEn).toLocaleString('es-MX');
     poblarFiltros();
     render();
   }catch(err){
@@ -374,17 +394,21 @@ async function cargar(){
 function poblarFiltros(){
   const fm = document.getElementById('fMes');
   RAW.meses.forEach((m,i) => fm.insertAdjacentHTML('beforeend', `<option value="${i}">${m}</option>`));
+  fm.value = RAW.meses.length - 1; // mes en curso por default
 
   ['fMes','fArea','fNombre','umbralCritico','umbralSobresaliente'].forEach(id=>{
     document.getElementById(id).addEventListener('input', render);
   });
 
   document.querySelectorAll('#chipsGrupo .chip').forEach(chip=>{
+    const g = chip.dataset.v;
+    chip.style.borderColor = GRUPO_COLOR[g];
+    chip.style.color = GRUPO_COLOR[g];
     chip.addEventListener('click', ()=>{
       const v = chip.dataset.v;
-      if(grupoSel.includes(v)){ grupoSel = grupoSel.filter(g=>g!==v); chip.classList.remove('active'); }
-      else { grupoSel.push(v); chip.classList.add('active'); }
-      sucSel = []; // al cambiar de grupo, se resetea la sucursal particular
+      if(grupoSel.includes(v)){ grupoSel = grupoSel.filter(x=>x!==v); chip.classList.remove('active'); chip.style.background='#fff'; chip.style.color=GRUPO_COLOR[v]; }
+      else { grupoSel.push(v); chip.classList.add('active'); chip.style.background=GRUPO_COLOR[v]; chip.style.color='#fff'; }
+      sucSel = [];
       actualizarPanelSucursales();
       actualizarAreas();
       render();
@@ -407,19 +431,16 @@ function poblarFiltros(){
 function actualizarPanelSucursales(){
   const panel = document.getElementById('sucursalPanel');
   const cs = document.getElementById('chipsSucursal');
-  if(grupoSel.length === 0){
-    panel.classList.remove('open');
-    cs.innerHTML = '';
-    return;
-  }
+  if(grupoSel.length === 0){ panel.classList.remove('open'); cs.innerHTML = ''; return; }
+  const color = GRUPO_COLOR[grupoSel[0]];
   const sucursales = [...new Set(RAW.registros.filter(r=>grupoSel.includes(r.grupo)).map(r=>r.sucursal))].sort();
   cs.innerHTML = '';
-  sucursales.forEach(s => cs.insertAdjacentHTML('beforeend', `<button class="chip" data-v="${s}">${s}</button>`));
+  sucursales.forEach(s => cs.insertAdjacentHTML('beforeend', `<button class="chip" data-v="${s}" style="border-color:${color};color:${color};">${s}</button>`));
   document.querySelectorAll('#chipsSucursal .chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       const v = chip.dataset.v;
-      if(sucSel.includes(v)){ sucSel = sucSel.filter(s=>s!==v); chip.classList.remove('active'); }
-      else { sucSel.push(v); chip.classList.add('active'); }
+      if(sucSel.includes(v)){ sucSel = sucSel.filter(s=>s!==v); chip.classList.remove('active'); chip.style.background='#fff'; chip.style.color=color; }
+      else { sucSel.push(v); chip.classList.add('active'); chip.style.background=color; chip.style.color='#fff'; }
       render();
     });
   });
@@ -436,7 +457,6 @@ function areasDisponibles(){
   grupoSel.forEach(g => (AREAS_POR_GRUPO[g]||[]).forEach(a=>set.add(a)));
   return [...set];
 }
-
 function actualizarAreas(){
   const fa = document.getElementById('fArea');
   const actual = fa.value;
@@ -445,40 +465,52 @@ function actualizarAreas(){
   if([...fa.options].some(o=>o.value===actual)) fa.value = actual;
 }
 
-function mesHasta(){
+function mesSelValue(){
   const v = document.getElementById('fMes').value;
-  return v === '' ? RAW.meses.length - 1 : Number(v);
+  return v === '' ? null : Number(v); // null = acumulado total
+}
+
+function baseFilter(){
+  const fArea = document.getElementById('fArea').value;
+  const fNombre = document.getElementById('fNombre').value.trim().toLowerCase();
+  return RAW.registros
+    .filter(r => (grupoSel.length === 0 || grupoSel.includes(r.grupo)))
+    .filter(r => (sucSel.length === 0 || sucSel.includes(r.sucursal)))
+    .filter(r => (!fArea || norm(r.departamento) === norm(fArea)))
+    .filter(r => (!fNombre || r.nombre.toLowerCase().includes(fNombre)));
+}
+
+function withMonthCalc(registros, mesSel, critico, sobresaliente){
+  return registros.map(r => {
+    let totalReal, metaAcumulada, avance;
+    if(mesSel === null){
+      const capturados = r.meses.filter(v => v !== null);
+      totalReal = capturados.reduce((a,b)=>a+b, 0);
+      metaAcumulada = r.meta * capturados.length;
+      avance = metaAcumulada > 0 ? totalReal / metaAcumulada : null;
+    } else {
+      const v = r.meses[mesSel];
+      totalReal = v === null ? 0 : v;
+      metaAcumulada = r.meta;
+      avance = v === null ? null : (r.meta > 0 ? v / r.meta : null);
+    }
+    return {...r, totalReal, metaAcumulada, avance, clasificacion: clasificar(avance, critico, sobresaliente)};
+  });
 }
 
 function getFiltered(){
   const critico = Number(document.getElementById('umbralCritico').value) / 100;
   const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
-  const fArea = document.getElementById('fArea').value;
-  const fNombre = document.getElementById('fNombre').value.trim().toLowerCase();
-  const mHasta = mesHasta();
-
-  return RAW.registros
-    .filter(r => (grupoSel.length === 0 || grupoSel.includes(r.grupo)))
-    .filter(r => (sucSel.length === 0 || sucSel.includes(r.sucursal)))
-    .filter(r => (!fArea || norm(r.departamento) === norm(fArea)))
-    .filter(r => (!fNombre || r.nombre.toLowerCase().includes(fNombre)))
-    .map(r => {
-      const mesesSel = r.meses.slice(0, mHasta + 1);
-      const capturados = mesesSel.filter(v => v !== null);
-      const totalReal = capturados.reduce((a,b)=>a+b, 0);
-      const metaAcumulada = r.meta * capturados.length;
-      const avance = metaAcumulada > 0 ? totalReal / metaAcumulada : null;
-      const clasificacion = clasificar(avance, critico, sobresaliente);
-      return {...r, totalReal, metaAcumulada, avance, clasificacion};
-    })
-    .filter(r => {
-      if (estadoFiltro === 'meta') return r.avance !== null && r.avance >= 1;
-      if (estadoFiltro === 'critico') return r.clasificacion === 'Critico';
-      return true;
-    });
+  const mesSel = mesSelValue();
+  const withCalc = withMonthCalc(baseFilter(), mesSel, critico, sobresaliente);
+  return withCalc.filter(r => {
+    if (estadoFiltro === 'meta') return r.avance !== null && r.avance >= 1;
+    if (estadoFiltro === 'critico') return r.clasificacion === 'Critico';
+    return true;
+  });
 }
 
-function agrupar(registros, campo){
+function agrupar(registros, campo, critico, sobresaliente){
   const map = {};
   registros.forEach(r => {
     const k = r[campo] || '(sin dato)';
@@ -487,8 +519,6 @@ function agrupar(registros, campo){
     map[k].total += r.totalReal;
     map[k].meta += r.metaAcumulada;
   });
-  const critico = Number(document.getElementById('umbralCritico').value) / 100;
-  const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
   return Object.values(map).map(g => {
     const avance = g.meta > 0 ? g.total/g.meta : null;
     return {...g, avance, clasificacion: clasificar(avance, critico, sobresaliente)};
@@ -503,13 +533,9 @@ function renderTable(id, headers, rows){
   table.querySelector('thead').innerHTML = '<tr>' + headers.map(h=>`<th>${h}</th>`).join('') + '</tr>';
   table.querySelector('tbody').innerHTML = rows.join('');
 }
+function destroyMiniCharts(){ miniCharts.forEach(c => c.destroy()); miniCharts = []; }
 
-function destroyMiniCharts(){
-  miniCharts.forEach(c => c.destroy());
-  miniCharts = [];
-}
-
-function renderCircleGrid(containerId, grupos){
+function renderCircleGrid(containerId, grupos, baseColor){
   const el = document.getElementById(containerId);
   if(grupos.length === 0){ el.innerHTML = '<p class="hint">Sin datos para esta selección.</p>'; return; }
   el.innerHTML = grupos.map((g,i) => `
@@ -521,7 +547,7 @@ function renderCircleGrid(containerId, grupos){
   grupos.forEach((g,i) => {
     const ctx = document.getElementById(`${containerId}-c${i}`).getContext('2d');
     const p = g.avance === null ? 0 : Math.min(1, g.avance);
-    const color = CLASIF_COLOR[colorClasif(g.clasificacion)];
+    const color = shadeForIndex(baseColor, i, grupos.length);
     const c = new Chart(ctx, {
       type:'doughnut',
       data:{ datasets:[{ data:[p, 1-p], backgroundColor:[color, '#ece6f0'], borderWidth:0 }] },
@@ -531,82 +557,124 @@ function renderCircleGrid(containerId, grupos){
   });
 }
 
+function contextoActual(){
+  // Determina el color/logo/titulo segun el nivel de filtro activo
+  if(sucSel.length === 1){
+    return { color: GRUPO_COLOR[grupoSel[0]] || '#402c46', logo: LOGO_SUCURSAL[sucSel[0]] || null, titulo: sucSel[0] };
+  }
+  if(sucSel.length > 1){
+    return { color: GRUPO_COLOR[grupoSel[0]] || '#402c46', logo: null, titulo: sucSel.length + ' sucursales seleccionadas' };
+  }
+  if(grupoSel.length === 1){
+    return { color: GRUPO_COLOR[grupoSel[0]], logo: LOGO_GRUPO[grupoSel[0]] || null, titulo: grupoSel[0] };
+  }
+  if(grupoSel.length > 1){
+    return { color: '#402c46', logo: null, titulo: grupoSel.join(' + ') };
+  }
+  return { color: '#402c46', logo: null, titulo: 'Todas las sucursales' };
+}
+
 function render(){
   const registros = getFiltered();
-  const mHasta = mesHasta();
+  const critico = Number(document.getElementById('umbralCritico').value) / 100;
+  const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
 
   const totalReal = registros.reduce((a,r)=>a+r.totalReal,0);
   const totalMeta = registros.reduce((a,r)=>a+r.metaAcumulada,0);
   const avanceGeneral = totalMeta>0 ? totalReal/totalMeta : null;
-  const cumplieron = registros.filter(r=>r.avance!==null && r.avance>=1).length;
+
+  const ctx = contextoActual();
+  document.getElementById('summaryTitle').textContent = ctx.titulo;
+  const logoEl = document.getElementById('summaryLogo');
+  if(ctx.logo){ logoEl.src = ctx.logo; logoEl.style.display = 'block'; } else { logoEl.style.display = 'none'; }
+
+  document.getElementById('meterPct').textContent = pct(avanceGeneral);
+  document.getElementById('meterPct').style.color = ctx.color;
+  const meterFill = document.getElementById('meterFill');
+  const METER_MAX = 2.0; // escala visual: 0% a 200%
+  const p = avanceGeneral === null ? 0 : Math.min(avanceGeneral, METER_MAX);
+  meterFill.style.width = (p / METER_MAX * 100) + '%';
+  meterFill.style.background = ctx.color;
 
   document.getElementById('statTotal').textContent = num(totalReal);
-  document.getElementById('statCumplieron').textContent = cumplieron;
 
-  let gaugeTitle = 'Todas las sucursales';
-  if (sucSel.length === 1) gaugeTitle = sucSel[0];
-  else if (sucSel.length > 1) gaugeTitle = sucSel.length + ' sucursales seleccionadas';
-  else if (grupoSel.length) gaugeTitle = grupoSel.join(' + ');
-  document.getElementById('gaugeTitle').textContent = gaugeTitle;
-  document.getElementById('gaugePct').textContent = pct(avanceGeneral);
-  drawGauge(avanceGeneral, clasificar(avanceGeneral, Number(document.getElementById('umbralCritico').value)/100, Number(document.getElementById('umbralSobresaliente').value)/100));
+  const porArea = agrupar(registros, 'departamento', critico, sobresaliente).filter(g => g.nombre !== '(sin dato)');
+  const conDatos = porArea.filter(g => g.avance !== null).sort((a,b)=>b.avance-a.avance);
+  if(conDatos.length){
+    document.getElementById('statTop').textContent = conDatos[0].nombre + ' (' + num(conDatos[0].total) + ')';
+    document.getElementById('statLow').textContent = conDatos[conDatos.length-1].nombre + ' (' + num(conDatos[conDatos.length-1].total) + ')';
+  } else {
+    document.getElementById('statTop').textContent = '-';
+    document.getElementById('statLow').textContent = '-';
+  }
 
   destroyMiniCharts();
 
-  // Meta por Sucursal: si no hay grupo elegido, todas; si hay grupo, solo las de ese grupo
-  document.getElementById('tituloSucursal').textContent = grupoSel.length ? 'Meta por Sucursal (' + grupoSel.join(' + ') + ')' : 'Meta por Sucursal (general)';
-  const porSucursal = agrupar(registros, 'sucursal').sort((a,b)=>b.total-a.total);
-  renderCircleGrid('circSucursal', porSucursal);
+  // Meta por Sucursal, agrupada visualmente por unidad de negocio
+  const bloque = document.getElementById('bloqueSucursal');
+  const gruposAMostrar = grupoSel.length ? grupoSel : ['Vivo 47','Easy Fit','Oficina Central','GEB'];
+  bloque.innerHTML = gruposAMostrar.map(g => `
+    <div class="grupo-block">
+      <div class="grupo-block-title" style="color:${GRUPO_COLOR[g]};border-color:${GRUPO_COLOR[g]}44;">${g}</div>
+      <div class="circle-grid" id="circSuc-${g.replace(/\s+/g,'')}"></div>
+    </div>`).join('');
+  gruposAMostrar.forEach(g => {
+    const regGrupo = registros.filter(r => r.grupo === g);
+    const porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+    renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g]);
+  });
 
-  // Meta por Area: solo si hay grupo seleccionado
+  // Meta por Area
   const areaHint = document.getElementById('areaHint');
+  const sinDatosHint = document.getElementById('sinDatosHint');
   const circArea = document.getElementById('circArea');
   if(grupoSel.length === 0){
     areaHint.style.display = 'block';
+    sinDatosHint.style.display = 'none';
     circArea.innerHTML = '';
   } else {
     areaHint.style.display = 'none';
-    const porArea = agrupar(registros, 'departamento').sort((a,b)=>b.total-a.total);
-    renderCircleGrid('circArea', porArea);
+    const porAreaFull = agrupar(registros, 'departamento', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+    renderCircleGrid('circArea', porAreaFull, GRUPO_COLOR[grupoSel[0]]);
+    const sinDatos = registros.filter(r => !r.departamento);
+    if(sinDatos.length){
+      const porSucSD = {};
+      sinDatos.forEach(r => porSucSD[r.sucursal] = (porSucSD[r.sucursal]||0)+1);
+      const detalle = Object.entries(porSucSD).map(([s,n])=>`${s} (${n})`).join(', ');
+      sinDatosHint.textContent = `"Sin datos" = colaboradores sin Área capturada en la hoja de origen: ${detalle}. Corrígelo directo en el Google Sheet.`;
+      sinDatosHint.style.display = 'block';
+    } else {
+      sinDatosHint.style.display = 'none';
+    }
   }
 
   const detalle = [...registros].sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
   renderTable('tblColaboradores',
-    ['Nombre','Sucursal','Rol','Área','Meta/mes','Total Real','% Avance','Clasificación'],
-    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}</td><td>${r.departamento}</td><td>${r.meta}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td></tr>`));
+    ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación'],
+    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td></tr>`));
 
-  const mesesLabels = RAW.meses.slice(0, mHasta+1);
+  // Linea de acumulado mensual: SIEMPRE todo el rango disponible, independiente del filtro de Mes
+  const base = baseFilter();
+  const mesesLabels = RAW.meses;
   const acumPorMes = mesesLabels.map((_, idx) => {
     let suma = 0;
-    registros.forEach(r => { const v = r.meses[idx]; if (v !== null) suma += v; });
+    base.forEach(r => { const v = r.meses[idx]; if (v !== null) suma += v; });
     return suma;
   });
   let acumulado = 0;
   const acumulativo = acumPorMes.map(v => acumulado += v);
-  drawLinea(mesesLabels, acumulativo);
+  drawLinea(mesesLabels, acumulativo, ctx.color);
 }
 
-function drawGauge(avance, clasif){
-  const ctx = document.getElementById('gauge').getContext('2d');
-  if(charts.gauge) charts.gauge.destroy();
-  const p = avance === null ? 0 : Math.min(1, avance);
-  const colorMap = {Critico:'#7a2b4a', Sobresaliente:'#c9a24b', 'En meta':'#402c46', 'Sin datos':'#cccccc'};
-  charts.gauge = new Chart(ctx, {
-    type:'doughnut',
-    data:{ datasets:[{ data:[p, 1-p], backgroundColor:[colorMap[clasif]||'#402c46', '#ece6f0'], borderWidth:0 }] },
-    options:{ cutout:'78%', rotation:-90, circumference:360, plugins:{tooltip:{enabled:false}, legend:{display:false}} }
-  });
-}
-
-function drawLinea(labels, data){
+function drawLinea(labels, data, color){
   const ctx = document.getElementById('chartLinea').getContext('2d');
   if(charts.linea) charts.linea.destroy();
   charts.linea = new Chart(ctx, {
     type:'line',
     data:{ labels, datasets:[{
       label:'Empoderamientos acumulados', data,
-      borderColor:'#402c46', backgroundColor:'rgba(201,162,75,0.18)',
-      borderWidth:3, pointBackgroundColor:'#c9a24b', pointBorderColor:'#402c46', pointRadius:2.5, pointHoverRadius:5, fill:true, tension:0.3
+      borderColor:color, backgroundColor:color+'26',
+      borderWidth:3, pointBackgroundColor:color, pointBorderColor:'#fff', pointRadius:2.5, pointHoverRadius:5, fill:true, tension:0.3
     }]},
     options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
   });
