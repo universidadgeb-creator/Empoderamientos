@@ -41,7 +41,7 @@
     box-shadow:0 2px 10px rgba(64,44,70,0.25);gap:20px;flex-wrap:wrap;
   }
   .brand{display:flex;align-items:center;gap:14px;}
-  .brand .logo{width:150px;height:70px;flex-shrink:0;object-fit:contain;border-radius:8px;background:#fff;padding:5px;}
+  .brand .logo{width:220px;height:90px;flex-shrink:0;object-fit:contain;border-radius:8px;background:#fff;padding:6px;}
   .brand-title{font-size:27px;letter-spacing:0.3px;margin:0;}
   .header-msg{font-family:'Livvic',Arial,sans-serif;font-weight:400;font-size:14px;opacity:0.88;font-style:italic;text-align:right;max-width:340px;}
 
@@ -168,7 +168,8 @@
       </div>
       <div class="field">
         <label>Buscar colaborador</label>
-        <input type="text" id="fNombre" placeholder="Nombre...">
+        <input type="text" id="fNombre" placeholder="Nombre..." list="colabList">
+        <datalist id="colabList"></datalist>
       </div>
       <div class="field">
         <label>Estado</label>
@@ -203,9 +204,10 @@
         <div class="meter-pct" id="meterPct">-</div>
       </div>
       <div class="summary-stats">
+        <div class="stat-item"><span class="num" id="statMeta">-</span><span class="lbl">Meta Empoderamientos</span></div>
         <div class="stat-item"><span class="num" id="statTotal">-</span><span class="lbl">Total Empoderamientos</span></div>
-        <div class="stat-item top"><span class="num" id="statTop">-</span><span class="lbl" id="statTopLbl">Área más sobresaliente</span></div>
-        <div class="stat-item low"><span class="num" id="statLow">-</span><span class="lbl" id="statLowLbl">Área más baja</span></div>
+        <div class="stat-item top" id="statTopWrap"><span class="num" id="statTop">-</span><span class="lbl" id="statTopLbl">Área más sobresaliente</span></div>
+        <div class="stat-item low" id="statLowWrap"><span class="num" id="statLow">-</span><span class="lbl" id="statLowLbl">Área más baja</span></div>
       </div>
     </div>
   </div>
@@ -225,6 +227,11 @@
     <p class="hint" id="areaHint">Selecciona un grupo / unidad de negocio arriba para ver el detalle por área.</p>
     <div class="circle-grid" id="circArea"></div>
     <p class="hint" id="sinDatosHint" style="display:none;margin-top:10px;"></p>
+  </section>
+
+  <section id="secIndividual" style="display:none;">
+    <h2 id="individualTitle">Detalle Individual</h2>
+    <div class="table-wrap"><table id="tblIndividual"><thead></thead><tbody></tbody></table></div>
   </section>
 
   <section>
@@ -324,7 +331,7 @@ async function cargarDesdeSheets(){
       .then(text => parseSheetRows(parseCSV(text), cfg))
       .catch(err => { console.warn('No se pudo leer la hoja', cfg.sheet, err); return []; })
   ));
-  const MESES_NOMBRE = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const MESES_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   return {
     generadoEn: new Date().toISOString(),
     meses: MESES_NOMBRE.slice(0, MESES_A_LEER),
@@ -395,6 +402,10 @@ function poblarFiltros(){
   const fm = document.getElementById('fMes');
   RAW.meses.forEach((m,i) => fm.insertAdjacentHTML('beforeend', `<option value="${i}">${m}</option>`));
   fm.value = RAW.meses.length - 1; // mes en curso por default
+
+  const colabList = document.getElementById('colabList');
+  const nombresUnicos = [...new Set(RAW.registros.map(r=>r.nombre))].sort();
+  nombresUnicos.forEach(n => colabList.insertAdjacentHTML('beforeend', `<option value="${n}"></option>`));
 
   ['fMes','fArea','fNombre','umbralCritico','umbralSobresaliente'].forEach(id=>{
     document.getElementById(id).addEventListener('input', render);
@@ -596,16 +607,29 @@ function render(){
   meterFill.style.width = (p / METER_MAX * 100) + '%';
   meterFill.style.background = ctx.color;
 
+  document.getElementById('statMeta').textContent = num(totalMeta);
   document.getElementById('statTotal').textContent = num(totalReal);
 
-  const porArea = agrupar(registros, 'departamento', critico, sobresaliente).filter(g => g.nombre !== '(sin dato)');
-  const conDatos = porArea.filter(g => g.avance !== null).sort((a,b)=>b.avance-a.avance);
-  if(conDatos.length){
-    document.getElementById('statTop').textContent = conDatos[0].nombre + ' (' + num(conDatos[0].total) + ')';
-    document.getElementById('statLow').textContent = conDatos[conDatos.length-1].nombre + ' (' + num(conDatos[conDatos.length-1].total) + ')';
+  // El desglose de area mas sobresaliente/mas baja solo tiene sentido en vista general
+  // (si ya filtraste por un area especifica, ambas mostrarian lo mismo)
+  const fAreaActual = document.getElementById('fArea').value;
+  const topWrap = document.getElementById('statTopWrap');
+  const lowWrap = document.getElementById('statLowWrap');
+  if(fAreaActual){
+    topWrap.style.display = 'none';
+    lowWrap.style.display = 'none';
   } else {
-    document.getElementById('statTop').textContent = '-';
-    document.getElementById('statLow').textContent = '-';
+    topWrap.style.display = '';
+    lowWrap.style.display = '';
+    const porArea = agrupar(registros, 'departamento', critico, sobresaliente).filter(g => g.nombre !== '(sin dato)');
+    const conDatos = porArea.filter(g => g.avance !== null).sort((a,b)=>b.avance-a.avance);
+    if(conDatos.length){
+      document.getElementById('statTop').textContent = conDatos[0].nombre + ' (' + num(conDatos[0].total) + ')';
+      document.getElementById('statLow').textContent = conDatos[conDatos.length-1].nombre + ' (' + num(conDatos[conDatos.length-1].total) + ')';
+    } else {
+      document.getElementById('statTop').textContent = '-';
+      document.getElementById('statLow').textContent = '-';
+    }
   }
 
   destroyMiniCharts();
@@ -648,22 +672,51 @@ function render(){
     }
   }
 
+  renderDetalleIndividual(critico, sobresaliente);
+
   const detalle = [...registros].sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
   renderTable('tblColaboradores',
     ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación'],
     detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td></tr>`));
 
-  // Linea de acumulado mensual: SIEMPRE todo el rango disponible, independiente del filtro de Mes
+  // Linea de acumulado mensual (% de cumplimiento acumulado): SIEMPRE todo el rango disponible,
+  // independiente del filtro de Mes.
   const base = baseFilter();
   const mesesLabels = RAW.meses;
-  const acumPorMes = mesesLabels.map((_, idx) => {
-    let suma = 0;
-    base.forEach(r => { const v = r.meses[idx]; if (v !== null) suma += v; });
-    return suma;
+  let acumReal = 0, acumMeta = 0;
+  const pctAcumulado = mesesLabels.map((_, idx) => {
+    base.forEach(r => {
+      const v = r.meses[idx];
+      if (v !== null) { acumReal += v; acumMeta += r.meta; }
+    });
+    return acumMeta > 0 ? (acumReal / acumMeta) * 100 : 0;
   });
-  let acumulado = 0;
-  const acumulativo = acumPorMes.map(v => acumulado += v);
-  drawLinea(mesesLabels, acumulativo, ctx.color);
+  drawLinea(mesesLabels, pctAcumulado, ctx.color);
+}
+
+function renderDetalleIndividual(critico, sobresaliente){
+  const sec = document.getElementById('secIndividual');
+  const fNombre = document.getElementById('fNombre').value.trim();
+  if(!fNombre){ sec.style.display = 'none'; return; }
+  const persona = RAW.registros.find(r => norm(r.nombre) === norm(fNombre));
+  if(!persona){ sec.style.display = 'none'; return; }
+
+  document.getElementById('individualTitle').textContent =
+    `Detalle Individual — ${persona.nombre} (${persona.sucursal} · ${persona.rol})`;
+
+  const filas = RAW.meses.map((mes, idx) => {
+    const v = persona.meses[idx];
+    const avance = v === null ? null : (persona.meta > 0 ? v / persona.meta : null);
+    const clasif = clasificar(avance, critico, sobresaliente);
+    return `<tr><td>${mes}</td><td>${persona.meta}</td><td>${v === null ? '-' : v}</td><td>${pct(avance)}</td><td>${v === null ? '' : badge(clasif)}</td></tr>`;
+  });
+  const capturados = persona.meses.filter(v => v !== null);
+  const totalReal = capturados.reduce((a,b)=>a+b,0);
+  const totalMeta = persona.meta * capturados.length;
+  filas.push(`<tr style="font-weight:700;background:var(--lilac);"><td>Total</td><td>${totalMeta}</td><td>${totalReal}</td><td>${pct(totalMeta>0?totalReal/totalMeta:null)}</td><td></td></tr>`);
+
+  renderTable('tblIndividual', ['Mes','Meta','Real','% Avance','Clasificación'], filas);
+  sec.style.display = 'block';
 }
 
 function drawLinea(labels, data, color){
@@ -672,11 +725,12 @@ function drawLinea(labels, data, color){
   charts.linea = new Chart(ctx, {
     type:'line',
     data:{ labels, datasets:[{
-      label:'Empoderamientos acumulados', data,
+      label:'% de cumplimiento acumulado', data,
       borderColor:color, backgroundColor:color+'26',
       borderWidth:3, pointBackgroundColor:color, pointBorderColor:'#fff', pointRadius:2.5, pointHoverRadius:5, fill:true, tension:0.3
     }]},
-    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    options:{ plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>c.formattedValue+'%'}}},
+      scales:{y:{beginAtZero:true, ticks:{callback:(v)=>v+'%'}}} }
   });
 }
 
