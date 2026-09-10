@@ -113,6 +113,15 @@
   .top-row{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:start;}
   .top-row section, .top-row .summary-card{margin-bottom:0;}
   @media (max-width:900px){.top-row{grid-template-columns:1fr;}}
+  .top-row.unified{grid-template-columns:1fr;}
+
+  .hero-row{display:flex;align-items:center;gap:32px;flex-wrap:wrap;}
+  .hero-row .circle-grid{width:auto;flex-shrink:0;}
+  .hero-stats-slot{flex:1;min-width:220px;}
+  .summary-card.nested{border:none;box-shadow:none;padding:0;margin:0;}
+  .summary-card.nested .summary-logo,
+  .summary-card.nested .summary-title,
+  .summary-card.nested .meter-row{display:none !important;}
 
   /* --- Grid de circulos --- */
   .grupo-block{margin-bottom:18px;}
@@ -216,7 +225,7 @@
       <div id="bloqueSucursal"></div>
     </section>
 
-    <div class="summary-card">
+    <div class="summary-card" id="summaryCard">
       <img class="summary-logo" id="summaryLogo" style="display:none;">
       <div class="summary-body">
         <div class="summary-title" id="summaryTitle">Todas las sucursales</div>
@@ -674,25 +683,41 @@ function render(){
   destroyMiniCharts();
 
   // Meta por Sucursal, agrupada visualmente por unidad de negocio.
-  // Si ya hay una sola sucursal particular seleccionada, se muestra solo esa (circulo grande, con logo si aplica).
+  // Si ya hay una sola sucursal particular seleccionada: circulo grande unificado con las
+  // estadisticas del recuadro general al lado (sin barra, sin repetir info).
   const bloque = document.getElementById('bloqueSucursal');
-  let gruposAMostrar;
-  if (sucSel.length === 1) {
+  const topRow = document.querySelector('.top-row');
+  const summaryCard = document.getElementById('summaryCard');
+  const esUnificado = sucSel.length === 1;
+
+  if (esUnificado) {
+    topRow.classList.add('unified');
+    summaryCard.classList.add('nested');
     const g = RAW.registros.find(r => r.sucursal === sucSel[0]);
-    gruposAMostrar = g ? [g.grupo] : [];
+    const grupo = g ? g.grupo : null;
+    bloque.innerHTML = `<div class="hero-row"><div class="circle-grid" id="circSuc-hero"></div><div class="hero-stats-slot" id="heroStatsSlot"></div></div>`;
+    document.getElementById('heroStatsSlot').appendChild(summaryCard);
+    if (grupo) {
+      const regGrupo = registros.filter(r => r.grupo === grupo);
+      const porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+      renderCircleGrid('circSuc-hero', porSucursal, GRUPO_COLOR[grupo], LOGO_CIRCULO_SUCURSAL, true);
+    }
   } else {
-    gruposAMostrar = grupoSel.length ? grupoSel : ['Vivo 47','Easy Fit','Oficina Central','GEB'];
+    topRow.classList.remove('unified');
+    summaryCard.classList.remove('nested');
+    if (summaryCard.parentElement.id === 'heroStatsSlot') topRow.appendChild(summaryCard);
+    const gruposAMostrar = grupoSel.length ? grupoSel : ['Vivo 47','Easy Fit','Oficina Central','GEB'];
+    bloque.innerHTML = gruposAMostrar.map(g => `
+      <div class="grupo-block">
+        <div class="grupo-block-title" style="color:${GRUPO_COLOR[g]};border-color:${GRUPO_COLOR[g]}44;">${g}</div>
+        <div class="circle-grid" id="circSuc-${g.replace(/\s+/g,'')}"></div>
+      </div>`).join('');
+    gruposAMostrar.forEach(g => {
+      const regGrupo = registros.filter(r => r.grupo === g);
+      const porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+      renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g], LOGO_CIRCULO_SUCURSAL, false);
+    });
   }
-  bloque.innerHTML = gruposAMostrar.map(g => `
-    <div class="grupo-block">
-      <div class="grupo-block-title" style="color:${GRUPO_COLOR[g]};border-color:${GRUPO_COLOR[g]}44;">${g}</div>
-      <div class="circle-grid" id="circSuc-${g.replace(/\s+/g,'')}"></div>
-    </div>`).join('');
-  gruposAMostrar.forEach(g => {
-    const regGrupo = registros.filter(r => r.grupo === g);
-    const porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
-    renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g], LOGO_CIRCULO_SUCURSAL, sucSel.length === 1);
-  });
 
   // Meta por Area
   const areaHint = document.getElementById('areaHint');
