@@ -97,7 +97,7 @@
   .meter-marker{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--primary-dark);opacity:.55;}
   .meter-marker .mm-label{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--muted);}
   .meter-pct{font-size:22px;font-weight:700;font-family:'Poppins',sans-serif;color:var(--primary-dark);min-width:64px;text-align:right;}
-  .summary-stats{display:flex;gap:28px;flex-wrap:wrap;}
+  .summary-stats{display:grid;grid-template-columns:1fr 1fr;gap:16px 28px;}
   .summary-stats .stat-item .num{display:block;font-size:22px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
   .summary-stats .stat-item .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;}
   .summary-stats .stat-item.top .num{color:var(--sobresaliente);}
@@ -235,7 +235,7 @@
         </div>
         <div class="summary-stats">
           <div class="stat-item"><span class="num" id="statMeta">-</span><span class="lbl">Meta Empoderamientos</span></div>
-          <div class="stat-item"><span class="num" id="statTotal">-</span><span class="lbl">Total Empoderamientos</span></div>
+          <div class="stat-item"><span class="num" id="statTotal">-</span><span class="lbl">Real Empoderamientos</span></div>
           <div class="stat-item"><span class="num" id="statPctMeta">-</span><span class="lbl">% Colaboradores en Meta</span></div>
           <div class="stat-item sobresaliente"><span class="num" id="statPctSobresaliente">-</span><span class="lbl">% Colaboradores Sobresalientes</span></div>
           <div class="stat-item top" id="statTopWrap"><span class="num" id="statTop">-</span><span class="lbl" id="statTopLbl">Área más sobresaliente</span></div>
@@ -563,12 +563,21 @@ function withMonthCalc(registros, mesSel, critico, sobresaliente){
   });
 }
 
+// Registros con grupo/sucursal/area/nombre/mes aplicados, PERO sin el filtro de Estado.
+// Los totales de sucursal/resumen siempre deben reflejar a TODOS los colaboradores; el filtro
+// de Estado (Cumplieron meta / Mejora) solo tiene sentido para la lista de la tabla, no para
+// comparar contra la meta fija de la sucursal completa.
 function getFiltered(){
   const critico = Number(document.getElementById('umbralCritico').value) / 100;
   const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
   const mesSel = mesSelValue();
-  const withCalc = withMonthCalc(baseFilter(), mesSel, critico, sobresaliente);
-  return withCalc.filter(r => {
+  return withMonthCalc(baseFilter(), mesSel, critico, sobresaliente);
+}
+
+// Aplica el filtro de Estado (Todos / Cumplieron meta / Mejora) -- usar solo para la tabla
+// de colaboradores, nunca para los totales/metas de sucursal.
+function aplicarFiltroEstado(registros){
+  return registros.filter(r => {
     if (estadoFiltro === 'meta') return r.avance !== null && r.avance >= 1;
     if (estadoFiltro === 'critico') return r.clasificacion === 'Critico';
     return true;
@@ -623,7 +632,7 @@ function renderCircleGrid(containerId, grupos, baseColor, logosMap, esHero){
         <canvas id="${containerId}-c${i}"></canvas><div class="cpct">${pct(g.avance)}</div>
       </div>
       <div class="cname">${g.nombre}</div>
-      <div class="cvals">${num(g.total)} / ${num(g.meta)}</div>
+      <div class="cvals">Real ${num(g.total)} · Meta ${num(g.meta)}</div>
     </div>`;
   }).join('');
   grupos.forEach((g,i) => {
@@ -791,7 +800,7 @@ function render(){
 
   renderDetalleIndividual(critico, sobresaliente);
 
-  const detalle = [...registros].sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
+  const detalle = aplicarFiltroEstado(registros).sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
   renderTable('tblColaboradores',
     ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación'],
     detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td></tr>`));
