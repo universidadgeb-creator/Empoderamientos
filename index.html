@@ -291,6 +291,26 @@ const SHEETS_CONFIG = [
   { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', layout: 'B' },
 ];
 
+// Meta mensual FIJA de negocio por sucursal (no depende de cuantos colaboradores haya).
+// Para "Acumulado total" se multiplica por el numero de meses del periodo.
+const META_FIJA_SUCURSAL = {
+  'Aleira': 32,
+  'Cañadas': 48,
+  'Ávila Camacho': 48,
+  'Iteso': 40,
+  'Center': 56,
+  'Valle Real': 175,
+  'Gourmetería': 140,
+  'Naciones Unidas': 296,
+  'Oficina Central Vivo47': 54,
+  'GEB': 40,
+  'Oficina Central Easy Fit': 15,
+};
+function metaFijaSucursal(nombreSucursal, multiplicador){
+  const base = META_FIJA_SUCURSAL[nombreSucursal];
+  return base === undefined ? null : base * multiplicador;
+}
+
 const AREAS_POR_GRUPO = {
   'Vivo 47': ['Deportes','Comercial','Kids','Administración','Orden y Limpieza','Mantenimiento','Acuática'],
   'Easy Fit': ['Operación','Administración','Orden y Limpieza','Deportes','Mantenimiento'],
@@ -580,6 +600,16 @@ function renderTable(id, headers, rows){
 }
 function destroyMiniCharts(){ miniCharts.forEach(c => c.destroy()); miniCharts = []; }
 
+// Sustituye la meta sumada (individual x colaboradores) por la meta FIJA de negocio cuando existe.
+function aplicarMetaFija(porSucursal, multiplicador, critico, sobresaliente){
+  return porSucursal.map(g => {
+    const metaFija = metaFijaSucursal(g.nombre, multiplicador);
+    if(metaFija === null) return g;
+    const avance = metaFija > 0 ? g.total / metaFija : null;
+    return {...g, meta: metaFija, avance, clasificacion: clasificar(avance, critico, sobresaliente)};
+  });
+}
+
 function renderCircleGrid(containerId, grupos, baseColor, logosMap, esHero){
   const el = document.getElementById(containerId);
   if(grupos.length === 0){ el.innerHTML = '<p class="hint">Sin datos para esta selección.</p>'; return; }
@@ -630,9 +660,24 @@ function render(){
   const registros = getFiltered();
   const critico = Number(document.getElementById('umbralCritico').value) / 100;
   const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
+  const fAreaActual = document.getElementById('fArea').value;
+  const fNombreActual = document.getElementById('fNombre').value.trim();
+  const multiplicadorMeta = mesSelValue() === null ? RAW.meses.length : 1;
 
   const totalReal = registros.reduce((a,r)=>a+r.totalReal,0);
-  const totalMeta = registros.reduce((a,r)=>a+r.metaAcumulada,0);
+  // Meta: si no hay filtro de area/nombre, se usa la meta FIJA de negocio de cada sucursal
+  // en lugar de la suma de metas individuales (mas confiable, no depende del headcount).
+  let totalMeta;
+  if(!fAreaActual && !fNombreActual){
+    const sucursalesEnScope = [...new Set(registros.map(r=>r.sucursal))];
+    totalMeta = sucursalesEnScope.reduce((acc,s) => {
+      const mf = metaFijaSucursal(s, multiplicadorMeta);
+      if(mf !== null) return acc + mf;
+      return acc + registros.filter(r=>r.sucursal===s).reduce((a,r)=>a+r.metaAcumulada,0);
+    }, 0);
+  } else {
+    totalMeta = registros.reduce((a,r)=>a+r.metaAcumulada,0);
+  }
   const avanceGeneral = totalMeta>0 ? totalReal/totalMeta : null;
 
   const ctx = contextoActual();
@@ -660,7 +705,6 @@ function render(){
 
   // El desglose de area mas sobresaliente/mas baja solo tiene sentido en vista general
   // (si ya filtraste por un area especifica, ambas mostrarian lo mismo)
-  const fAreaActual = document.getElementById('fArea').value;
   const topWrap = document.getElementById('statTopWrap');
   const lowWrap = document.getElementById('statLowWrap');
   if(fAreaActual){
@@ -699,7 +743,8 @@ function render(){
     document.getElementById('heroStatsSlot').appendChild(summaryCard);
     if (grupo) {
       const regGrupo = registros.filter(r => r.grupo === grupo);
-      const porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+      let porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+      if(!fAreaActual) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, critico, sobresaliente);
       renderCircleGrid('circSuc-hero', porSucursal, GRUPO_COLOR[grupo], LOGO_CIRCULO_SUCURSAL, true);
     }
   } else {
@@ -714,7 +759,8 @@ function render(){
       </div>`).join('');
     gruposAMostrar.forEach(g => {
       const regGrupo = registros.filter(r => r.grupo === g);
-      const porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+      let porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
+      if(!fAreaActual) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, critico, sobresaliente);
       renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g], LOGO_CIRCULO_SUCURSAL, false);
     });
   }
