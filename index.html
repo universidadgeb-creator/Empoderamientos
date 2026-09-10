@@ -102,6 +102,7 @@
   .summary-stats .stat-item .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.3px;}
   .summary-stats .stat-item.top .num{color:var(--sobresaliente);}
   .summary-stats .stat-item.low .num{color:var(--critico);}
+  .summary-stats .stat-item.sobresaliente .num{color:var(--sobresaliente);}
 
   section{
     background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;
@@ -117,7 +118,14 @@
   .circle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:16px;}
   .circle-item{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
   .circle-canvas-wrap{position:relative;width:88px;height:88px;}
-  .circle-canvas-wrap .cpct{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;}
+  .circle-canvas-wrap canvas{position:relative;z-index:1;}
+  .circle-canvas-wrap .cpct{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--primary-dark);font-family:'Poppins',sans-serif;z-index:2;}
+  .circle-item.hero{margin:0 auto;}
+  .circle-item.hero .circle-canvas-wrap{width:190px;height:190px;}
+  .circle-item.hero .cpct{font-size:32px;}
+  .circle-item.hero .cname{font-size:16px;margin-top:6px;}
+  .circle-item.hero .cvals{font-size:13px;}
+  .circle-bg-logo{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:58%;height:58%;object-fit:contain;z-index:0;opacity:0.9;}
   .circle-item .cname{font-size:12px;font-weight:600;color:var(--text);line-height:1.2;}
   .circle-item .cvals{font-size:10.5px;color:var(--muted);}
 
@@ -195,6 +203,11 @@
     </div>
   </div>
 
+  <section id="secSucursal">
+    <h2>Meta por Sucursal</h2>
+    <div id="bloqueSucursal"></div>
+  </section>
+
   <div class="summary-card">
     <img class="summary-logo" id="summaryLogo" style="display:none;">
     <div class="summary-body">
@@ -206,6 +219,8 @@
       <div class="summary-stats">
         <div class="stat-item"><span class="num" id="statMeta">-</span><span class="lbl">Meta Empoderamientos</span></div>
         <div class="stat-item"><span class="num" id="statTotal">-</span><span class="lbl">Total Empoderamientos</span></div>
+        <div class="stat-item"><span class="num" id="statPctMeta">-</span><span class="lbl">% Colaboradores en Meta</span></div>
+        <div class="stat-item sobresaliente"><span class="num" id="statPctSobresaliente">-</span><span class="lbl">% Colaboradores Sobresalientes</span></div>
         <div class="stat-item top" id="statTopWrap"><span class="num" id="statTop">-</span><span class="lbl" id="statTopLbl">Área más sobresaliente</span></div>
         <div class="stat-item low" id="statLowWrap"><span class="num" id="statLow">-</span><span class="lbl" id="statLowLbl">Área más baja</span></div>
       </div>
@@ -215,11 +230,6 @@
   <section>
     <h2>Acumulado Mensual</h2>
     <canvas id="chartLinea" height="80"></canvas>
-  </section>
-
-  <section id="secSucursal">
-    <h2>Meta por Sucursal</h2>
-    <div id="bloqueSucursal"></div>
   </section>
 
   <section id="secArea">
@@ -280,6 +290,12 @@ const LOGO_SUCURSAL = {
   'Naciones Unidas': 'Logo Naciones Unidas.png',
   'Center': 'Logo Center.png',
   'GEB': 'Logo GEB.png',
+};
+// Logo dentro del circulo grande de "Meta por Sucursal": solo para estas 3 (pedido explicito)
+const LOGO_CIRCULO_SUCURSAL = {
+  'Naciones Unidas': 'Logo Naciones Unidas.png',
+  'Gourmetería': 'Logo Gourmetería.png',
+  'Valle Real': 'Logo Valle Real.png',
 };
 
 function csvUrl(sheetName){
@@ -546,15 +562,22 @@ function renderTable(id, headers, rows){
 }
 function destroyMiniCharts(){ miniCharts.forEach(c => c.destroy()); miniCharts = []; }
 
-function renderCircleGrid(containerId, grupos, baseColor){
+function renderCircleGrid(containerId, grupos, baseColor, logosMap){
   const el = document.getElementById(containerId);
   if(grupos.length === 0){ el.innerHTML = '<p class="hint">Sin datos para esta selección.</p>'; return; }
-  el.innerHTML = grupos.map((g,i) => `
-    <div class="circle-item">
-      <div class="circle-canvas-wrap"><canvas id="${containerId}-c${i}"></canvas><div class="cpct">${pct(g.avance)}</div></div>
+  const esHero = grupos.length === 1;
+  el.innerHTML = grupos.map((g,i) => {
+    const logoSrc = logosMap && logosMap[g.nombre];
+    return `
+    <div class="circle-item${esHero ? ' hero' : ''}">
+      <div class="circle-canvas-wrap">
+        ${esHero && logoSrc ? `<img class="circle-bg-logo" src="${logoSrc}">` : ''}
+        <canvas id="${containerId}-c${i}"></canvas><div class="cpct">${pct(g.avance)}</div>
+      </div>
       <div class="cname">${g.nombre}</div>
       <div class="cvals">${num(g.total)} / ${num(g.meta)}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   grupos.forEach((g,i) => {
     const ctx = document.getElementById(`${containerId}-c${i}`).getContext('2d');
     const p = g.avance === null ? 0 : Math.min(1, g.avance);
@@ -610,6 +633,13 @@ function render(){
   document.getElementById('statMeta').textContent = num(totalMeta);
   document.getElementById('statTotal').textContent = num(totalReal);
 
+  // % de colaboradores en meta / sobresalientes (sobre el total de colaboradores filtrados)
+  const totalColab = registros.length;
+  const enMetaCount = registros.filter(r => r.clasificacion === 'En meta').length;
+  const sobresalienteCount = registros.filter(r => r.clasificacion === 'Sobresaliente').length;
+  document.getElementById('statPctMeta').textContent = totalColab ? Math.round(enMetaCount/totalColab*100) + '%' : '-';
+  document.getElementById('statPctSobresaliente').textContent = totalColab ? Math.round(sobresalienteCount/totalColab*100) + '%' : '-';
+
   // El desglose de area mas sobresaliente/mas baja solo tiene sentido en vista general
   // (si ya filtraste por un area especifica, ambas mostrarian lo mismo)
   const fAreaActual = document.getElementById('fArea').value;
@@ -634,9 +664,16 @@ function render(){
 
   destroyMiniCharts();
 
-  // Meta por Sucursal, agrupada visualmente por unidad de negocio
+  // Meta por Sucursal, agrupada visualmente por unidad de negocio.
+  // Si ya hay una sola sucursal particular seleccionada, se muestra solo esa (circulo grande, con logo si aplica).
   const bloque = document.getElementById('bloqueSucursal');
-  const gruposAMostrar = grupoSel.length ? grupoSel : ['Vivo 47','Easy Fit','Oficina Central','GEB'];
+  let gruposAMostrar;
+  if (sucSel.length === 1) {
+    const g = RAW.registros.find(r => r.sucursal === sucSel[0]);
+    gruposAMostrar = g ? [g.grupo] : [];
+  } else {
+    gruposAMostrar = grupoSel.length ? grupoSel : ['Vivo 47','Easy Fit','Oficina Central','GEB'];
+  }
   bloque.innerHTML = gruposAMostrar.map(g => `
     <div class="grupo-block">
       <div class="grupo-block-title" style="color:${GRUPO_COLOR[g]};border-color:${GRUPO_COLOR[g]}44;">${g}</div>
@@ -645,7 +682,7 @@ function render(){
   gruposAMostrar.forEach(g => {
     const regGrupo = registros.filter(r => r.grupo === g);
     const porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
-    renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g]);
+    renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g], LOGO_CIRCULO_SUCURSAL);
   });
 
   // Meta por Area
