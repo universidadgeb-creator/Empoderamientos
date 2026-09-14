@@ -203,6 +203,21 @@
           <button data-v="critico">Mejora</button>
         </div>
       </div>
+      <div class="field">
+        <label>Líder / Equipo</label>
+        <div class="seg-sm" id="segRol">
+          <button data-v="" class="active">Todos</button>
+          <button data-v="lider">Líder</button>
+          <button data-v="equipo">Equipo</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Nuevos ingresos</label>
+        <div class="seg-sm" id="segNuevo">
+          <button data-v="" class="active">Todos</button>
+          <button data-v="nuevo">Nuevos ingresos</button>
+        </div>
+      </div>
       <details class="advanced">
         <summary>Ajustar umbrales ▾</summary>
         <div class="adv-body">
@@ -283,13 +298,24 @@ const SHEETS_CONFIG = [
   { sheet: 'AVILA CAMACHO',   sucursal: 'Ávila Camacho',            grupo: 'Easy Fit',        layout: 'A' },
   { sheet: 'ITESO',           sucursal: 'Iteso',                    grupo: 'Easy Fit',        layout: 'A' },
   { sheet: 'CENTER',          sucursal: 'Center',                   grupo: 'Vivo 47',         layout: 'A' },
-  { sheet: 'VR',              sucursal: 'Valle Real',               grupo: 'Vivo 47',         layout: 'A' },
-  { sheet: 'GMT',             sucursal: 'Gourmetería',              grupo: 'Vivo 47',         layout: 'A' },
-  { sheet: ' NAC',            sucursal: 'Naciones Unidas',          grupo: 'Vivo 47',         layout: 'A' },
+  { sheet: 'VR',              sucursal: 'Valle Real',               grupo: 'Vivo 47',         layout: 'A', nuevoIngreso: true },
+  { sheet: 'GMT',             sucursal: 'Gourmetería',              grupo: 'Vivo 47',         layout: 'A', nuevoIngreso: true },
+  { sheet: ' NAC',            sucursal: 'Naciones Unidas',          grupo: 'Vivo 47',         layout: 'A', nuevoIngreso: true },
   { sheet: 'OFC 47',          sucursal: 'Oficina Central Vivo47',   grupo: 'Oficina Central', layout: 'B' },
   { sheet: ' GEB',            sucursal: 'GEB',                      grupo: 'GEB',             layout: 'B' },
   { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', layout: 'B' },
 ];
+
+// Roles que cuentan como "Líder" (gerentes de sucursal, líderes deportivos y líderes de turno).
+// Se compara sin acentos/mayúsculas para tolerar variantes como "Lider Deportivo", "Líder de turno", etc.
+const LIDER_KEYWORDS = ['gerente', 'lider deportivo', 'lider de turno'];
+function quitarAcentos(s){
+  return (s||'').toString().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+function esLider(rol){
+  const r = quitarAcentos(rol).toLowerCase();
+  return LIDER_KEYWORDS.some(k => r.includes(k));
+}
 
 // Meta mensual FIJA de negocio por sucursal (no depende de cuantos colaboradores haya).
 // Para "Acumulado total" se multiplica por el numero de meses del periodo.
@@ -358,44 +384,99 @@ function parseCSV(text){
   if(field.length || row.length){ row.push(field); rows.push(row); }
   return rows;
 }
+// Renglon "Suma" (y "Avance") que cada hoja trae al final de su tabla: es la fuente oficial de
+// negocio para los totales mensuales de esa sucursal (meta acumulada + real por mes), sin importar
+// en que columna haya quedado por los distintos layouts. Formato: "Suma", meta, mes1..mes9.
+function parseSumaRow(rows){
+  // Ojo: algunas hojas traen una tabla lateral de "Área" (mas a la derecha) que tambien tiene su
+  // propio renglon "Suma" -- para no confundirla con la de la tabla principal, solo se busca en
+  // las primeras columnas (donde vive Nombre/Rol/Departamento/Meta de la tabla principal).
+  const MAX_COL_BUSQUEDA = 10;
+  for(const r of rows){
+    for(let idx=0; idx<Math.min(r.length, MAX_COL_BUSQUEDA); idx++){
+      if((r[idx]||'').toString().trim().toLowerCase() === 'suma'){
+        const vals = [];
+        for(let k=1;k<=1+MESES_A_LEER;k++){
+          const v = r[idx+k];
+          vals.push(v===undefined || v==='' ? 0 : Number(v)||0);
+        }
+        return { meta: vals[0], meses: vals.slice(1) };
+      }
+    }
+  }
+  return null;
+}
+
 function parseSheetRows(rows, cfg){
   const headerIdx = rows.findIndex(r => (r[1]||'').trim() === 'Nombre');
-  if(headerIdx === -1) return [];
+  if(headerIdx === -1) return { registros: [], resumen: null };
+
+  // Normalmente los datos empiezan justo debajo del encabezado, pero en alguna hoja (ej. VR) hay
+  // un renglon de sub-encabezado extra (ej. "Nuevo Ingreso") antes de la primera fila real: se salta.
+  let dataStart = headerIdx + 1;
+  while(dataStart < rows.length){
+    const r = rows[dataStart];
+    const nombre = (r[1]||'').trim();
+    if(nombre) break;
+    const tieneOtroContenido = r.some((v,idx) => idx !== 1 && (v||'').toString().trim() !== '');
+    if(tieneOtroContenido){ dataStart++; continue; }
+    break;
+  }
+
   const registros = [];
-  for(let i=headerIdx+1;i<rows.length;i++){
+  for(let i=dataStart;i<rows.length;i++){
     const r = rows[i];
     const nombre = (r[1]||'').trim();
     if(!nombre) break;
-    let rol, depto, meta, monthStart;
-    if(cfg.layout === 'A'){ rol=(r[3]||'').trim(); depto=(r[4]||'').trim(); meta=Number(r[5])||0; monthStart=6; }
-    else { rol='N/A'; depto=(r[3]||'').trim(); meta=Number(r[4])||0; monthStart=5; }
+    // layout 'A' = tiene columna Rol; layout 'B' = sin columna Rol (oficinas).
+    // cfg.nuevoIngreso = la hoja tiene una columna extra "Nuevo Ingreso" (fecha) metida antes de
+    // "Unidad de Negocio", lo que recorre una columna a la derecha todo lo demas.
+    let rol, depto, meta, monthStart, fechaIngresoRaw;
+    if(cfg.layout === 'A'){
+      if(cfg.nuevoIngreso){ fechaIngresoRaw = (r[2]||'').trim(); rol=(r[4]||'').trim(); depto=(r[5]||'').trim(); meta=Number(r[6])||0; monthStart=7; }
+      else { fechaIngresoRaw = ''; rol=(r[3]||'').trim(); depto=(r[4]||'').trim(); meta=Number(r[5])||0; monthStart=6; }
+    } else {
+      rol='N/A'; fechaIngresoRaw='';
+      if(cfg.nuevoIngreso){ depto=(r[4]||'').trim(); meta=Number(r[5])||0; monthStart=6; }
+      else { depto=(r[3]||'').trim(); meta=Number(r[4])||0; monthStart=5; }
+    }
     const meses = [];
     for(let m=0;m<MESES_A_LEER;m++){
       const v = r[monthStart+m];
       meses.push(v===undefined || v==='' ? null : Number(v));
     }
-    registros.push({ sucursal: cfg.sucursal, grupo: cfg.grupo, nombre, rol, departamento: depto, meta, meses });
+    const fechaNorm = quitarAcentos(fechaIngresoRaw).toLowerCase();
+    const esNuevoIngreso = fechaIngresoRaw !== '' && fechaNorm !== 'no';
+    registros.push({
+      sucursal: cfg.sucursal, grupo: cfg.grupo, nombre, rol, departamento: depto, meta, meses,
+      esNuevoIngreso, fechaIngreso: esNuevoIngreso ? fechaIngresoRaw : null,
+    });
   }
-  return registros;
+  return { registros, resumen: parseSumaRow(rows) };
 }
 async function cargarDesdeSheets(){
   const resultados = await Promise.all(SHEETS_CONFIG.map(cfg =>
     fetch(csvUrl(cfg.sheet))
       .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-      .then(text => parseSheetRows(parseCSV(text), cfg))
-      .catch(err => { console.warn('No se pudo leer la hoja', cfg.sheet, err); return []; })
+      .then(text => ({ cfg, ...parseSheetRows(parseCSV(text), cfg) }))
+      .catch(err => { console.warn('No se pudo leer la hoja', cfg.sheet, err); return { cfg, registros: [], resumen: null }; })
   ));
   const MESES_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const resumenPorSucursal = {};
+  resultados.forEach(({cfg, resumen}) => { if(resumen) resumenPorSucursal[cfg.sucursal] = resumen; });
   return {
     generadoEn: new Date().toISOString(),
     meses: MESES_NOMBRE.slice(0, MESES_A_LEER),
-    registros: resultados.flat(),
+    registros: resultados.map(r => r.registros).flat(),
+    resumenPorSucursal,
   };
 }
 // ==================================================================================================
 
 let RAW = null;
 let estadoFiltro = '';
+let rolFiltro = ''; // '' | 'lider' | 'equipo'
+let nuevoFiltro = ''; // '' | 'nuevo'
 let grupoSel = [];
 let sucSel = [];
 let charts = {};
@@ -489,6 +570,24 @@ function poblarFiltros(){
     });
   });
 
+  document.querySelectorAll('#segRol button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#segRol button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      rolFiltro = btn.dataset.v;
+      render();
+    });
+  });
+
+  document.querySelectorAll('#segNuevo button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#segNuevo button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      nuevoFiltro = btn.dataset.v;
+      render();
+    });
+  });
+
   actualizarPanelSucursales();
   actualizarAreas();
 }
@@ -542,7 +641,24 @@ function baseFilter(){
     .filter(r => (grupoSel.length === 0 || grupoSel.includes(r.grupo)))
     .filter(r => (sucSel.length === 0 || sucSel.includes(r.sucursal)))
     .filter(r => (!fArea || norm(r.departamento) === norm(fArea)))
-    .filter(r => (!fNombre || r.nombre.toLowerCase().includes(fNombre)));
+    .filter(r => (!fNombre || r.nombre.toLowerCase().includes(fNombre)))
+    .filter(r => (rolFiltro === '' || (rolFiltro === 'lider' ? esLider(r.rol) : !esLider(r.rol))))
+    .filter(r => (nuevoFiltro === '' || r.esNuevoIngreso));
+}
+
+// Cuando se ve la sucursal completa (sin recortar por área/nombre/líder-equipo/nuevos ingresos), los
+// totales de "Meta por Sucursal" se sacan directo del renglon "Suma" de la hoja de origen (fuente
+// oficial de negocio) en vez de sumar cada colaborador en el navegador.
+function usarDatosOficiales(){
+  const fArea = document.getElementById('fArea').value;
+  const fNombre = document.getElementById('fNombre').value.trim();
+  return !fArea && !fNombre && rolFiltro === '' && nuevoFiltro === '';
+}
+function realOficialSucursal(sucursal, mesSel){
+  const res = RAW.resumenPorSucursal[sucursal];
+  if(!res) return null;
+  if(mesSel === null) return res.meses.reduce((a,b)=>a+b, 0);
+  return res.meses[mesSel] ?? 0;
 }
 
 function withMonthCalc(registros, mesSel, critico, sobresaliente){
@@ -609,13 +725,17 @@ function renderTable(id, headers, rows){
 }
 function destroyMiniCharts(){ miniCharts.forEach(c => c.destroy()); miniCharts = []; }
 
-// Sustituye la meta sumada (individual x colaboradores) por la meta FIJA de negocio cuando existe.
-function aplicarMetaFija(porSucursal, multiplicador, critico, sobresaliente){
+// Sustituye la meta sumada (individual x colaboradores) por la meta FIJA de negocio, y el real sumado
+// por el renglon "Suma" oficial de la hoja de esa sucursal, cuando existen (ver usarDatosOficiales()).
+function aplicarMetaFija(porSucursal, multiplicador, mesSel, critico, sobresaliente){
   return porSucursal.map(g => {
     const metaFija = metaFijaSucursal(g.nombre, multiplicador);
-    if(metaFija === null) return g;
-    const avance = metaFija > 0 ? g.total / metaFija : null;
-    return {...g, meta: metaFija, avance, clasificacion: clasificar(avance, critico, sobresaliente)};
+    const oficial = realOficialSucursal(g.nombre, mesSel);
+    const meta = metaFija !== null ? metaFija : g.meta;
+    const total = oficial !== null ? oficial : g.total;
+    if(metaFija === null && oficial === null) return g;
+    const avance = meta > 0 ? total / meta : null;
+    return {...g, meta, total, avance, clasificacion: clasificar(avance, critico, sobresaliente)};
   });
 }
 
@@ -673,18 +793,25 @@ function render(){
   const fNombreActual = document.getElementById('fNombre').value.trim();
   const multiplicadorMeta = mesSelValue() === null ? RAW.meses.length : 1;
 
-  const totalReal = registros.reduce((a,r)=>a+r.totalReal,0);
-  // Meta: si no hay filtro de area/nombre, se usa la meta FIJA de negocio de cada sucursal
-  // en lugar de la suma de metas individuales (mas confiable, no depende del headcount).
-  let totalMeta;
-  if(!fAreaActual && !fNombreActual){
+  // Real y Meta: si es la vista completa de la(s) sucursal(es) (sin filtro de area/nombre/
+  // líder-equipo/nuevos ingresos), se usan el renglon "Suma" oficial de la hoja y la meta FIJA
+  // de negocio, en lugar de sumar cada colaborador en el navegador (mas confiable).
+  let totalReal, totalMeta;
+  if(usarDatosOficiales()){
     const sucursalesEnScope = [...new Set(registros.map(r=>r.sucursal))];
+    const mesSel = mesSelValue();
+    totalReal = sucursalesEnScope.reduce((acc,s) => {
+      const oficial = realOficialSucursal(s, mesSel);
+      if(oficial !== null) return acc + oficial;
+      return acc + registros.filter(r=>r.sucursal===s).reduce((a,r)=>a+r.totalReal,0);
+    }, 0);
     totalMeta = sucursalesEnScope.reduce((acc,s) => {
       const mf = metaFijaSucursal(s, multiplicadorMeta);
       if(mf !== null) return acc + mf;
       return acc + registros.filter(r=>r.sucursal===s).reduce((a,r)=>a+r.metaAcumulada,0);
     }, 0);
   } else {
+    totalReal = registros.reduce((a,r)=>a+r.totalReal,0);
     totalMeta = registros.reduce((a,r)=>a+r.metaAcumulada,0);
   }
   const avanceGeneral = totalMeta>0 ? totalReal/totalMeta : null;
@@ -753,7 +880,7 @@ function render(){
     if (grupo) {
       const regGrupo = registros.filter(r => r.grupo === grupo);
       let porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
-      if(!fAreaActual) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, critico, sobresaliente);
+      if(usarDatosOficiales()) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, mesSelValue(), critico, sobresaliente);
       renderCircleGrid('circSuc-hero', porSucursal, GRUPO_COLOR[grupo], LOGO_CIRCULO_SUCURSAL, true);
     }
   } else {
@@ -769,7 +896,7 @@ function render(){
     gruposAMostrar.forEach(g => {
       const regGrupo = registros.filter(r => r.grupo === g);
       let porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
-      if(!fAreaActual) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, critico, sobresaliente);
+      if(usarDatosOficiales()) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, mesSelValue(), critico, sobresaliente);
       renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g], LOGO_CIRCULO_SUCURSAL, false);
     });
   }
@@ -802,8 +929,8 @@ function render(){
 
   const detalle = aplicarFiltroEstado(registros).sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
   renderTable('tblColaboradores',
-    ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación'],
-    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td></tr>`));
+    ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación','Nuevo Ingreso'],
+    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}${esLider(r.rol) ? ' <span class="badge EnMeta" style="padding:1px 8px;">Líder</span>' : ''}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td><td>${r.esNuevoIngreso ? r.fechaIngreso : '-'}</td></tr>`));
 
   // Linea de acumulado mensual (% de cumplimiento acumulado): SIEMPRE todo el rango disponible,
   // independiente del filtro de Mes.
