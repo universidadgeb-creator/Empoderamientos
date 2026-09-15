@@ -79,9 +79,6 @@
   .seg-sm button:last-child{border-right:none;}
   .seg-sm button.active{background:var(--primary);color:#fff;}
 
-  details.advanced summary{cursor:pointer;font-size:12px;color:var(--primary-light);font-weight:600;list-style:none;}
-  details.advanced .adv-body{display:flex;gap:14px;margin-top:10px;}
-
   /* --- Resumen principal (logo + medidor horizontal + texto) --- */
   .summary-card{
     background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 26px;
@@ -195,15 +192,7 @@
         <input type="text" id="fNombre" placeholder="Nombre..." list="colabList">
         <datalist id="colabList"></datalist>
       </div>
-      <div class="field">
-        <label>Estado</label>
-        <div class="seg-sm" id="segEstado">
-          <button data-v="" class="active">Todos</button>
-          <button data-v="meta">Cumplieron meta</button>
-          <button data-v="critico">Mejora</button>
-        </div>
-      </div>
-      <div class="field">
+      <div class="field" id="campoRol" style="display:none;">
         <label>Líder / Equipo</label>
         <div class="seg-sm" id="segRol">
           <button data-v="" class="active">Todos</button>
@@ -218,13 +207,14 @@
           <button data-v="nuevo">Nuevos ingresos</button>
         </div>
       </div>
-      <details class="advanced">
-        <summary>Ajustar umbrales ▾</summary>
-        <div class="adv-body">
-          <div class="field"><label>Mejora &lt;</label><input type="number" id="umbralCritico" value="70" style="width:60px;"></div>
-          <div class="field"><label>Sobresaliente &gt;</label><input type="number" id="umbralSobresaliente" value="120" style="width:60px;"></div>
+      <div class="field">
+        <label>Estado</label>
+        <div class="seg-sm" id="segEstado">
+          <button data-v="" class="active">Todos</button>
+          <button data-v="meta">Cumplieron meta</button>
+          <button data-v="critico">Mejora</button>
         </div>
-      </details>
+      </div>
     </div>
     <div class="sucursal-panel" id="sucursalPanel">
       <div class="field" style="flex:1;">
@@ -292,6 +282,10 @@
 const SPREADSHEET_ID = "1UGjqpgMLrWk7QHMDy8rTkPTiAuzGUgJZ47uWSqDdho4";
 const MESES_A_LEER = 9; // Ene-Sep (mes en curso incluido)
 
+// Umbrales de clasificacion (antes ajustables desde la UI, ahora fijos aqui).
+const UMBRAL_CRITICO = 0.70;       // debajo de esto: "Mejora"
+const UMBRAL_SOBRESALIENTE = 1.20; // arriba de esto: "Sobresaliente"
+
 const SHEETS_CONFIG = [
   { sheet: 'ALEIRA',          sucursal: 'Aleira',                   grupo: 'Easy Fit',        layout: 'A' },
   { sheet: 'CAÑADAS',         sucursal: 'Cañadas',                  grupo: 'Easy Fit',        layout: 'A' },
@@ -306,15 +300,21 @@ const SHEETS_CONFIG = [
   { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', layout: 'B' },
 ];
 
-// Roles que cuentan como "Líder" (gerentes de sucursal, líderes deportivos y líderes de turno).
-// Se compara sin acentos/mayúsculas para tolerar variantes como "Lider Deportivo", "Líder de turno", etc.
-const LIDER_KEYWORDS = ['gerente', 'lider deportivo', 'lider de turno'];
+// Roles que cuentan como "Líder": gerentes de sucursal, líderes deportivos, líderes de turno y
+// capitanas/capitanes de Orden y Limpieza. Se compara sin acentos/mayúsculas para tolerar variantes
+// como "Lider Deportivo", "Líder de turno", "Gerente de Sucusal" (typo), "Capitan", etc.
+const LIDER_KEYWORDS = ['gerente', 'lider deportivo', 'lider de turno', 'capitan'];
+// Líder Acuática solo cuenta como Líder en Naciones Unidas (es la única sucursal con equipo Acuática).
+const LIDER_KEYWORD_ACUATICA = 'lider acuatica';
+const SUCURSAL_LIDER_ACUATICA = 'Naciones Unidas';
 function quitarAcentos(s){
   return (s||'').toString().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
-function esLider(rol){
+function esLider(rol, sucursal){
   const r = quitarAcentos(rol).toLowerCase();
-  return LIDER_KEYWORDS.some(k => r.includes(k));
+  if(LIDER_KEYWORDS.some(k => r.includes(k))) return true;
+  if(r.includes(LIDER_KEYWORD_ACUATICA) && sucursal === SUCURSAL_LIDER_ACUATICA) return true;
+  return false;
 }
 
 // Meta mensual FIJA de negocio por sucursal (no depende de cuantos colaboradores haya).
@@ -542,7 +542,7 @@ function poblarFiltros(){
   const nombresUnicos = [...new Set(RAW.registros.map(r=>r.nombre))].sort();
   nombresUnicos.forEach(n => colabList.insertAdjacentHTML('beforeend', `<option value="${n}"></option>`));
 
-  ['fMes','fArea','fNombre','umbralCritico','umbralSobresaliente'].forEach(id=>{
+  ['fMes','fArea','fNombre'].forEach(id=>{
     document.getElementById(id).addEventListener('input', render);
   });
 
@@ -557,6 +557,7 @@ function poblarFiltros(){
       sucSel = [];
       actualizarPanelSucursales();
       actualizarAreas();
+      actualizarVisibilidadRol();
       render();
     });
   });
@@ -590,6 +591,19 @@ function poblarFiltros(){
 
   actualizarPanelSucursales();
   actualizarAreas();
+  actualizarVisibilidadRol();
+}
+
+// El filtro Líder/Equipo solo aplica a clubes (Vivo 47 / Easy Fit); en Oficina Central y GEB no
+// hay gerentes/líderes de club, así que el campo se oculta y el filtro se resetea a "Todos".
+const GRUPOS_CON_LIDER = ['Vivo 47', 'Easy Fit'];
+function actualizarVisibilidadRol(){
+  const aplica = grupoSel.some(g => GRUPOS_CON_LIDER.includes(g));
+  document.getElementById('campoRol').style.display = aplica ? '' : 'none';
+  if(!aplica && rolFiltro !== ''){
+    rolFiltro = '';
+    document.querySelectorAll('#segRol button').forEach(b=>b.classList.toggle('active', b.dataset.v===''));
+  }
 }
 
 function actualizarPanelSucursales(){
@@ -642,7 +656,7 @@ function baseFilter(){
     .filter(r => (sucSel.length === 0 || sucSel.includes(r.sucursal)))
     .filter(r => (!fArea || norm(r.departamento) === norm(fArea)))
     .filter(r => (!fNombre || r.nombre.toLowerCase().includes(fNombre)))
-    .filter(r => (rolFiltro === '' || (rolFiltro === 'lider' ? esLider(r.rol) : !esLider(r.rol))))
+    .filter(r => (rolFiltro === '' || (rolFiltro === 'lider' ? esLider(r.rol, r.sucursal) : !esLider(r.rol, r.sucursal))))
     .filter(r => (nuevoFiltro === '' || r.esNuevoIngreso));
 }
 
@@ -684,8 +698,8 @@ function withMonthCalc(registros, mesSel, critico, sobresaliente){
 // de Estado (Cumplieron meta / Mejora) solo tiene sentido para la lista de la tabla, no para
 // comparar contra la meta fija de la sucursal completa.
 function getFiltered(){
-  const critico = Number(document.getElementById('umbralCritico').value) / 100;
-  const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
+  const critico = UMBRAL_CRITICO;
+  const sobresaliente = UMBRAL_SOBRESALIENTE;
   const mesSel = mesSelValue();
   return withMonthCalc(baseFilter(), mesSel, critico, sobresaliente);
 }
@@ -787,8 +801,8 @@ function contextoActual(){
 
 function render(){
   const registros = getFiltered();
-  const critico = Number(document.getElementById('umbralCritico').value) / 100;
-  const sobresaliente = Number(document.getElementById('umbralSobresaliente').value) / 100;
+  const critico = UMBRAL_CRITICO;
+  const sobresaliente = UMBRAL_SOBRESALIENTE;
   const fAreaActual = document.getElementById('fArea').value;
   const fNombreActual = document.getElementById('fNombre').value.trim();
   const multiplicadorMeta = mesSelValue() === null ? RAW.meses.length : 1;
@@ -930,7 +944,7 @@ function render(){
   const detalle = aplicarFiltroEstado(registros).sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
   renderTable('tblColaboradores',
     ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación','Nuevo Ingreso'],
-    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}${esLider(r.rol) ? ' <span class="badge EnMeta" style="padding:1px 8px;">Líder</span>' : ''}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td><td>${r.esNuevoIngreso ? r.fechaIngreso : '-'}</td></tr>`));
+    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}${esLider(r.rol, r.sucursal) ? ' <span class="badge EnMeta" style="padding:1px 8px;">Líder</span>' : ''}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td><td>${r.esNuevoIngreso ? r.fechaIngreso : '-'}</td></tr>`));
 
   // Linea de acumulado mensual (% de cumplimiento acumulado): SIEMPRE todo el rango disponible,
   // independiente del filtro de Mes.
