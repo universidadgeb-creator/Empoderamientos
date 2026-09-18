@@ -318,7 +318,6 @@ function esLider(rol, sucursal){
 }
 
 // Meta mensual FIJA de negocio por sucursal (no depende de cuantos colaboradores haya).
-// Para "Acumulado total" se multiplica por el numero de meses del periodo.
 const META_FIJA_SUCURSAL = {
   'Aleira': 32,
   'Cañadas': 48,
@@ -332,9 +331,44 @@ const META_FIJA_SUCURSAL = {
   'GEB': 40,
   'Oficina Central Easy Fit': 15,
 };
-function metaFijaSucursal(nombreSucursal, multiplicador){
-  const base = META_FIJA_SUCURSAL[nombreSucursal];
-  return base === undefined ? null : base * multiplicador;
+// Estas sucursales traían una meta mensual menor y subieron a la de arriba a partir de
+// CAMBIO_META_MES_INDEX (Septiembre 2026, cuando la meta por colaborador pasó de 3 a 4). Para el
+// "Acumulado total" hay que sumar la meta que aplicaba en cada mes, no la meta actual x todos los meses.
+const META_FIJA_SUCURSAL_ANTERIOR = {
+  'Center': 56,
+  'Valle Real': 175,
+  'Gourmetería': 140,
+  'Naciones Unidas': 296,
+  'Oficina Central Vivo47': 54,
+};
+const CAMBIO_META_MES_INDEX = 8; // 0=Enero ... 8=Septiembre: primer mes con la meta nueva
+const CAMBIO_META_DELTA = 1;     // la meta individual subió de 3 a 4 (+1) en esas sucursales
+
+// Meta fija de una sucursal para un mes puntual (índice 0=Enero), respetando el cambio de meta.
+function metaFijaSucursalMes(nombreSucursal, mesIdx){
+  const actual = META_FIJA_SUCURSAL[nombreSucursal];
+  if(actual === undefined) return null;
+  const anterior = META_FIJA_SUCURSAL_ANTERIOR[nombreSucursal];
+  if(anterior !== undefined && mesIdx < CAMBIO_META_MES_INDEX) return anterior;
+  return actual;
+}
+// mesSel === null => Acumulado total: suma la meta que aplicó mes a mes (no meta_actual x N meses).
+function metaFijaSucursal(nombreSucursal, mesSel){
+  if(META_FIJA_SUCURSAL[nombreSucursal] === undefined) return null;
+  if(mesSel === null){
+    let total = 0;
+    for(let i=0;i<MESES_A_LEER;i++) total += metaFijaSucursalMes(nombreSucursal, i);
+    return total;
+  }
+  return metaFijaSucursalMes(nombreSucursal, mesSel);
+}
+// Meta individual de un colaborador para un mes puntual: si su sucursal tuvo el cambio de meta y el
+// mes es anterior al cambio, se resta el delta (ej. meta actual 4 -> meta histórica 3).
+function metaIndividualMes(registro, mesIdx){
+  if(META_FIJA_SUCURSAL_ANTERIOR[registro.sucursal] !== undefined && mesIdx < CAMBIO_META_MES_INDEX){
+    return Math.max(0, registro.meta - CAMBIO_META_DELTA);
+  }
+  return registro.meta;
 }
 
 const AREAS_POR_GRUPO = {
@@ -679,15 +713,23 @@ function withMonthCalc(registros, mesSel, critico, sobresaliente){
   return registros.map(r => {
     let totalReal, metaAcumulada, avance;
     if(mesSel === null){
-      const capturados = r.meses.filter(v => v !== null);
-      totalReal = capturados.reduce((a,b)=>a+b, 0);
-      metaAcumulada = r.meta * capturados.length;
+      // Suma la meta que aplicaba en cada mes capturado (ver metaIndividualMes), no la meta
+      // actual x numero de meses -- porque algunas sucursales subieron su meta a mitad de año.
+      let total = 0, metaTotal = 0;
+      r.meses.forEach((v, idx) => {
+        if(v === null) return;
+        total += v;
+        metaTotal += metaIndividualMes(r, idx);
+      });
+      totalReal = total;
+      metaAcumulada = metaTotal;
       avance = metaAcumulada > 0 ? totalReal / metaAcumulada : null;
     } else {
       const v = r.meses[mesSel];
+      const metaMes = metaIndividualMes(r, mesSel);
       totalReal = v === null ? 0 : v;
-      metaAcumulada = r.meta;
-      avance = v === null ? null : (r.meta > 0 ? v / r.meta : null);
+      metaAcumulada = metaMes;
+      avance = v === null ? null : (metaMes > 0 ? v / metaMes : null);
     }
     return {...r, totalReal, metaAcumulada, avance, clasificacion: clasificar(avance, critico, sobresaliente)};
   });
@@ -741,9 +783,9 @@ function destroyMiniCharts(){ miniCharts.forEach(c => c.destroy()); miniCharts =
 
 // Sustituye la meta sumada (individual x colaboradores) por la meta FIJA de negocio, y el real sumado
 // por el renglon "Suma" oficial de la hoja de esa sucursal, cuando existen (ver usarDatosOficiales()).
-function aplicarMetaFija(porSucursal, multiplicador, mesSel, critico, sobresaliente){
+function aplicarMetaFija(porSucursal, mesSel, critico, sobresaliente){
   return porSucursal.map(g => {
-    const metaFija = metaFijaSucursal(g.nombre, multiplicador);
+    const metaFija = metaFijaSucursal(g.nombre, mesSel);
     const oficial = realOficialSucursal(g.nombre, mesSel);
     const meta = metaFija !== null ? metaFija : g.meta;
     const total = oficial !== null ? oficial : g.total;
@@ -805,7 +847,6 @@ function render(){
   const sobresaliente = UMBRAL_SOBRESALIENTE;
   const fAreaActual = document.getElementById('fArea').value;
   const fNombreActual = document.getElementById('fNombre').value.trim();
-  const multiplicadorMeta = mesSelValue() === null ? RAW.meses.length : 1;
 
   // Real y Meta: si es la vista completa de la(s) sucursal(es) (sin filtro de area/nombre/
   // líder-equipo/nuevos ingresos), se usan el renglon "Suma" oficial de la hoja y la meta FIJA
@@ -820,7 +861,7 @@ function render(){
       return acc + registros.filter(r=>r.sucursal===s).reduce((a,r)=>a+r.totalReal,0);
     }, 0);
     totalMeta = sucursalesEnScope.reduce((acc,s) => {
-      const mf = metaFijaSucursal(s, multiplicadorMeta);
+      const mf = metaFijaSucursal(s, mesSel);
       if(mf !== null) return acc + mf;
       return acc + registros.filter(r=>r.sucursal===s).reduce((a,r)=>a+r.metaAcumulada,0);
     }, 0);
@@ -894,7 +935,7 @@ function render(){
     if (grupo) {
       const regGrupo = registros.filter(r => r.grupo === grupo);
       let porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
-      if(usarDatosOficiales()) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, mesSelValue(), critico, sobresaliente);
+      if(usarDatosOficiales()) porSucursal = aplicarMetaFija(porSucursal, mesSelValue(), critico, sobresaliente);
       renderCircleGrid('circSuc-hero', porSucursal, GRUPO_COLOR[grupo], LOGO_CIRCULO_SUCURSAL, true);
     }
   } else {
@@ -910,7 +951,7 @@ function render(){
     gruposAMostrar.forEach(g => {
       const regGrupo = registros.filter(r => r.grupo === g);
       let porSucursal = agrupar(regGrupo, 'sucursal', critico, sobresaliente).sort((a,b)=>b.total-a.total);
-      if(usarDatosOficiales()) porSucursal = aplicarMetaFija(porSucursal, multiplicadorMeta, mesSelValue(), critico, sobresaliente);
+      if(usarDatosOficiales()) porSucursal = aplicarMetaFija(porSucursal, mesSelValue(), critico, sobresaliente);
       renderCircleGrid('circSuc-'+g.replace(/\s+/g,''), porSucursal, GRUPO_COLOR[g], LOGO_CIRCULO_SUCURSAL, false);
     });
   }
