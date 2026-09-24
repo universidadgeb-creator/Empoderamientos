@@ -79,6 +79,27 @@
   .seg-sm button:last-child{border-right:none;}
   .seg-sm button.active{background:var(--primary);color:#fff;}
 
+  .dropdown-btn{
+    padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;
+    background:#fff;color:var(--text);font-family:inherit;cursor:pointer;text-align:left;
+    min-width:170px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .dropdown-btn:hover{border-color:var(--primary-light);}
+  .dropdown-panel{
+    display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#fff;
+    border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 18px rgba(64,44,70,0.16);
+    z-index:30;max-height:280px;overflow-y:auto;min-width:230px;padding:6px;
+  }
+  .dropdown-panel.open{display:block;}
+  .dropdown-item{
+    padding:7px 10px;font-size:13px;cursor:pointer;border-radius:6px;
+    display:flex;align-items:center;gap:8px;color:var(--text);white-space:nowrap;
+  }
+  .dropdown-item:hover{background:var(--lilac);}
+  .dropdown-item.active{background:var(--enmetaBg);color:var(--primary-dark);font-weight:600;}
+  .dropdown-item .chk{width:14px;height:14px;border:1.5px solid var(--lilac2);border-radius:4px;flex-shrink:0;}
+  .dropdown-item.active .chk{background:var(--primary);border-color:var(--primary);}
+
   /* --- Resumen principal (logo + medidor horizontal + texto) --- */
   .summary-card{
     background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 26px;
@@ -183,9 +204,10 @@
         <label>Mes</label>
         <select id="fMes"><option value="">Acumulado total</option></select>
       </div>
-      <div class="field" style="flex:1;min-width:220px;">
+      <div class="field" style="position:relative;">
         <label>Área</label>
-        <div class="chips chips-sm" id="chipsArea"></div>
+        <button type="button" class="dropdown-btn" id="btnArea">Todas ▾</button>
+        <div class="dropdown-panel" id="panelArea"></div>
       </div>
       <div class="field">
         <label>Buscar colaborador</label>
@@ -590,6 +612,18 @@ function poblarFiltros(){
     document.getElementById(id).addEventListener('input', render);
   });
 
+  const btnArea = document.getElementById('btnArea');
+  const panelArea = document.getElementById('panelArea');
+  btnArea.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    panelArea.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(panelArea.classList.contains('open') && !panelArea.contains(e.target) && e.target !== btnArea){
+      panelArea.classList.remove('open');
+    }
+  });
+
   document.querySelectorAll('#chipsGrupo .chip').forEach(chip=>{
     const g = chip.dataset.v;
     chip.style.borderColor = GRUPO_COLOR[g];
@@ -675,23 +709,31 @@ function areasDisponibles(){
   const base = grupoSel.length === 0 ? RAW.registros : RAW.registros.filter(r=>grupoSel.includes(r.grupo));
   return [...new Set(base.map(r=>r.departamento).filter(Boolean))].sort();
 }
-// Chips de Área: selección múltiple, cada clic prende/apaga esa área (igual que Sucursal particular).
+// Lista desplegable de Área: selección múltiple (cada clic prende/apaga esa área sin cerrar el
+// desplegable), para ocupar poco espacio en los controles.
+function actualizarBotonArea(){
+  const btn = document.getElementById('btnArea');
+  if(areaSel.length === 0) btn.textContent = 'Todas ▾';
+  else if(areaSel.length === 1) btn.textContent = areaSel[0] + ' ▾';
+  else btn.textContent = areaSel.length + ' áreas ▾';
+}
 function actualizarAreas(){
-  const ca = document.getElementById('chipsArea');
+  const panel = document.getElementById('panelArea');
   const disponibles = areasDisponibles();
   areaSel = areaSel.filter(a => disponibles.includes(a));
-  ca.innerHTML = '';
-  disponibles.forEach(a => ca.insertAdjacentHTML('beforeend', `<button class="chip" data-v="${a}">${a}</button>`));
-  document.querySelectorAll('#chipsArea .chip').forEach(chip=>{
-    const v = chip.dataset.v;
-    chip.classList.toggle('active', areaSel.includes(v));
-    if(areaSel.includes(v)){ chip.style.background='var(--primary)'; chip.style.color='#fff'; }
-    chip.addEventListener('click', ()=>{
-      if(areaSel.includes(v)){ areaSel = areaSel.filter(a=>a!==v); chip.classList.remove('active'); chip.style.background='#fff'; chip.style.color=''; }
-      else { areaSel.push(v); chip.classList.add('active'); chip.style.background='var(--primary)'; chip.style.color='#fff'; }
+  panel.innerHTML = disponibles.map(a =>
+    `<div class="dropdown-item${areaSel.includes(a) ? ' active' : ''}" data-v="${a}"><span class="chk"></span>${a}</div>`
+  ).join('');
+  panel.querySelectorAll('.dropdown-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      const v = item.dataset.v;
+      if(areaSel.includes(v)){ areaSel = areaSel.filter(a=>a!==v); item.classList.remove('active'); }
+      else { areaSel.push(v); item.classList.add('active'); }
+      actualizarBotonArea();
       render();
     });
   });
+  actualizarBotonArea();
 }
 
 function mesSelValue(){
