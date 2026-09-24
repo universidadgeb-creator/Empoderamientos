@@ -183,9 +183,9 @@
         <label>Mes</label>
         <select id="fMes"><option value="">Acumulado total</option></select>
       </div>
-      <div class="field">
+      <div class="field" style="flex:1;min-width:220px;">
         <label>Área</label>
-        <select id="fArea"><option value="">Todas</option></select>
+        <div class="chips chips-sm" id="chipsArea"></div>
       </div>
       <div class="field">
         <label>Buscar colaborador</label>
@@ -371,12 +371,13 @@ function metaIndividualMes(registro, mesIdx){
   return registro.meta;
 }
 
-const AREAS_POR_GRUPO = {
-  'Vivo 47': ['Deportes','Comercial','Kids','Administración','Orden y Limpieza','Mantenimiento','Acuática'],
-  'Easy Fit': ['Operación','Administración','Orden y Limpieza','Deportes','Mantenimiento'],
-  'Oficina Central': ['Capital Humano','Comercial','Deportes','Administración','Dirección','Mantenimiento'],
-  'GEB': ['Universidad y DO','Dirección de Capital Humano','Nominas','Compras','Contabilidad y Finanzas','Sistemas','Mantenimiento','Dirección Comercial'],
-};
+// Las áreas disponibles por filtro ya NO son una lista fija: se leen directo de lo que traiga cada
+// hoja (como las sucursales), para que nunca queden desactualizadas si cambian los departamentos.
+// Aquí solo se renombran nombres de área que se ven feo o cambiaron de texto en la hoja de origen.
+const DEPTO_RENAME = { 'Universidad Corporativa': 'Universidad' };
+function renombrarDepto(d){
+  return DEPTO_RENAME[d] || d;
+}
 
 const GRUPO_COLOR = { 'Vivo 47': '#60a700', 'Easy Fit': '#f37f1b', 'Oficina Central': '#402c46', 'GEB': '#402c46' };
 
@@ -418,24 +419,29 @@ function parseCSV(text){
   if(field.length || row.length){ row.push(field); rows.push(row); }
   return rows;
 }
+// Ojo: algunas hojas traen una tabla lateral de "Área" (mas a la derecha) que tambien tiene su
+// propio renglon "Suma" -- para no confundirla con la de la tabla principal, solo se busca en
+// las primeras columnas (donde vive Nombre/Rol/Departamento/Meta de la tabla principal).
+const SUMA_MAX_COL_BUSQUEDA = 10;
+function esRenglonSuma(r){
+  for(let idx=0; idx<Math.min(r.length, SUMA_MAX_COL_BUSQUEDA); idx++){
+    if((r[idx]||'').toString().trim().toLowerCase() === 'suma') return idx;
+  }
+  return -1;
+}
 // Renglon "Suma" (y "Avance") que cada hoja trae al final de su tabla: es la fuente oficial de
 // negocio para los totales mensuales de esa sucursal (meta acumulada + real por mes), sin importar
 // en que columna haya quedado por los distintos layouts. Formato: "Suma", meta, mes1..mes9.
 function parseSumaRow(rows){
-  // Ojo: algunas hojas traen una tabla lateral de "Área" (mas a la derecha) que tambien tiene su
-  // propio renglon "Suma" -- para no confundirla con la de la tabla principal, solo se busca en
-  // las primeras columnas (donde vive Nombre/Rol/Departamento/Meta de la tabla principal).
-  const MAX_COL_BUSQUEDA = 10;
   for(const r of rows){
-    for(let idx=0; idx<Math.min(r.length, MAX_COL_BUSQUEDA); idx++){
-      if((r[idx]||'').toString().trim().toLowerCase() === 'suma'){
-        const vals = [];
-        for(let k=1;k<=1+MESES_A_LEER;k++){
-          const v = r[idx+k];
-          vals.push(v===undefined || v==='' ? 0 : Number(v)||0);
-        }
-        return { meta: vals[0], meses: vals.slice(1) };
+    const idx = esRenglonSuma(r);
+    if(idx !== -1){
+      const vals = [];
+      for(let k=1;k<=1+MESES_A_LEER;k++){
+        const v = r[idx+k];
+        vals.push(v===undefined || v==='' ? 0 : Number(v)||0);
       }
+      return { meta: vals[0], meses: vals.slice(1) };
     }
   }
   return null;
@@ -460,8 +466,11 @@ function parseSheetRows(rows, cfg){
   const registros = [];
   for(let i=dataStart;i<rows.length;i++){
     const r = rows[i];
+    if(esRenglonSuma(r) !== -1) break; // fin real de la tabla de colaboradores
     const nombre = (r[1]||'').trim();
-    if(!nombre) break;
+    // Un renglon sin nombre en medio de la tabla (ej. quedó un Departamento/Meta sin borrar del
+    // todo) no debe cortar la lectura de los colaboradores que siguen: se salta y se sigue leyendo.
+    if(!nombre) continue;
     // layout 'A' = tiene columna Rol; layout 'B' = sin columna Rol (oficinas).
     // cfg.nuevoIngreso = la hoja tiene una columna extra "Nuevo Ingreso" (fecha) metida antes de
     // "Unidad de Negocio", lo que recorre una columna a la derecha todo lo demas.
@@ -482,7 +491,7 @@ function parseSheetRows(rows, cfg){
     const fechaNorm = quitarAcentos(fechaIngresoRaw).toLowerCase();
     const esNuevoIngreso = fechaIngresoRaw !== '' && fechaNorm !== 'no';
     registros.push({
-      sucursal: cfg.sucursal, grupo: cfg.grupo, nombre, rol, departamento: depto, meta, meses,
+      sucursal: cfg.sucursal, grupo: cfg.grupo, nombre, rol, departamento: renombrarDepto(depto), meta, meses,
       esNuevoIngreso, fechaIngreso: esNuevoIngreso ? fechaIngresoRaw : null,
     });
   }
@@ -513,6 +522,7 @@ let rolFiltro = ''; // '' | 'lider' | 'equipo'
 let nuevoFiltro = ''; // '' | 'nuevo'
 let grupoSel = [];
 let sucSel = [];
+let areaSel = [];
 let charts = {};
 let miniCharts = [];
 
@@ -576,7 +586,7 @@ function poblarFiltros(){
   const nombresUnicos = [...new Set(RAW.registros.map(r=>r.nombre))].sort();
   nombresUnicos.forEach(n => colabList.insertAdjacentHTML('beforeend', `<option value="${n}"></option>`));
 
-  ['fMes','fArea','fNombre'].forEach(id=>{
+  ['fMes','fNombre'].forEach(id=>{
     document.getElementById(id).addEventListener('input', render);
   });
 
@@ -659,22 +669,29 @@ function actualizarPanelSucursales(){
   panel.classList.add('open');
 }
 
+// Igual que las sucursales: las áreas disponibles se leen de los colaboradores ya cargados, no de
+// una lista fija, para que nunca queden desactualizadas si cambia un departamento en la hoja.
 function areasDisponibles(){
-  if(grupoSel.length === 0){
-    const todas = new Set();
-    Object.values(AREAS_POR_GRUPO).forEach(list => list.forEach(a=>todas.add(a)));
-    return [...todas];
-  }
-  const set = new Set();
-  grupoSel.forEach(g => (AREAS_POR_GRUPO[g]||[]).forEach(a=>set.add(a)));
-  return [...set];
+  const base = grupoSel.length === 0 ? RAW.registros : RAW.registros.filter(r=>grupoSel.includes(r.grupo));
+  return [...new Set(base.map(r=>r.departamento).filter(Boolean))].sort();
 }
+// Chips de Área: selección múltiple, cada clic prende/apaga esa área (igual que Sucursal particular).
 function actualizarAreas(){
-  const fa = document.getElementById('fArea');
-  const actual = fa.value;
-  fa.innerHTML = '<option value="">Todas</option>';
-  areasDisponibles().forEach(a => fa.insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`));
-  if([...fa.options].some(o=>o.value===actual)) fa.value = actual;
+  const ca = document.getElementById('chipsArea');
+  const disponibles = areasDisponibles();
+  areaSel = areaSel.filter(a => disponibles.includes(a));
+  ca.innerHTML = '';
+  disponibles.forEach(a => ca.insertAdjacentHTML('beforeend', `<button class="chip" data-v="${a}">${a}</button>`));
+  document.querySelectorAll('#chipsArea .chip').forEach(chip=>{
+    const v = chip.dataset.v;
+    chip.classList.toggle('active', areaSel.includes(v));
+    if(areaSel.includes(v)){ chip.style.background='var(--primary)'; chip.style.color='#fff'; }
+    chip.addEventListener('click', ()=>{
+      if(areaSel.includes(v)){ areaSel = areaSel.filter(a=>a!==v); chip.classList.remove('active'); chip.style.background='#fff'; chip.style.color=''; }
+      else { areaSel.push(v); chip.classList.add('active'); chip.style.background='var(--primary)'; chip.style.color='#fff'; }
+      render();
+    });
+  });
 }
 
 function mesSelValue(){
@@ -683,12 +700,11 @@ function mesSelValue(){
 }
 
 function baseFilter(){
-  const fArea = document.getElementById('fArea').value;
   const fNombre = document.getElementById('fNombre').value.trim().toLowerCase();
   return RAW.registros
     .filter(r => (grupoSel.length === 0 || grupoSel.includes(r.grupo)))
     .filter(r => (sucSel.length === 0 || sucSel.includes(r.sucursal)))
-    .filter(r => (!fArea || norm(r.departamento) === norm(fArea)))
+    .filter(r => (areaSel.length === 0 || areaSel.some(a => norm(r.departamento) === norm(a))))
     .filter(r => (!fNombre || r.nombre.toLowerCase().includes(fNombre)))
     .filter(r => (rolFiltro === '' || (rolFiltro === 'lider' ? esLider(r.rol, r.sucursal) : !esLider(r.rol, r.sucursal))))
     .filter(r => (nuevoFiltro === '' || r.esNuevoIngreso));
@@ -698,9 +714,8 @@ function baseFilter(){
 // totales de "Meta por Sucursal" se sacan directo del renglon "Suma" de la hoja de origen (fuente
 // oficial de negocio) en vez de sumar cada colaborador en el navegador.
 function usarDatosOficiales(){
-  const fArea = document.getElementById('fArea').value;
   const fNombre = document.getElementById('fNombre').value.trim();
-  return !fArea && !fNombre && rolFiltro === '' && nuevoFiltro === '';
+  return areaSel.length === 0 && !fNombre && rolFiltro === '' && nuevoFiltro === '';
 }
 function realOficialSucursal(sucursal, mesSel){
   const res = RAW.resumenPorSucursal[sucursal];
@@ -845,7 +860,7 @@ function render(){
   const registros = getFiltered();
   const critico = UMBRAL_CRITICO;
   const sobresaliente = UMBRAL_SOBRESALIENTE;
-  const fAreaActual = document.getElementById('fArea').value;
+  const fAreaActual = areaSel.length > 0;
   const fNombreActual = document.getElementById('fNombre').value.trim();
 
   // Real y Meta: si es la vista completa de la(s) sucursal(es) (sin filtro de area/nombre/
