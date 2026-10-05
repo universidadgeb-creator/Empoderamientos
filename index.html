@@ -302,25 +302,61 @@
 <script>
 // ======= CONFIGURACION: lee directo de Google Sheets (enlace publico "Cualquiera con el enlace - Lector") =======
 const SPREADSHEET_ID = "1UGjqpgMLrWk7QHMDy8rTkPTiAuzGUgJZ47uWSqDdho4";
-const MESES_A_LEER = 9; // Ene-Sep (mes en curso incluido)
+const MESES_A_LEER = 10; // Ene-Oct (mes en curso incluido)
 
 // Umbrales de clasificacion (antes ajustables desde la UI, ahora fijos aqui).
 const UMBRAL_CRITICO = 1.00;       // debajo de esto (no llegó a la meta): "Mejora"
 const UMBRAL_SOBRESALIENTE = 1.20; // arriba de esto: "Sobresaliente"
 
+// Columnas de cada hoja (índice 0 = columna A). Las hojas no comparten estructura:
+//  - LAYOUT_A:       B Nombre, C Unidad, D Rol, E Depto, F Meta, G.. meses
+//  - LAYOUT_A_FECHAS: B Nombre, C Nuevo Ingreso, D Salida, E Unidad, F Rol, G Depto, H Meta, I.. meses
+//  - LAYOUT_OFC47:   B Nombre, C Unidad, D Fecha inicio, E Salida, F Depto, G Meta, H.. meses
+//  - LAYOUT_B:       B Nombre, C Unidad, D Depto, E Meta, F.. meses
+// ingreso/salida/rol = null si la hoja no tiene esa columna.
+const LAYOUT_A        = { ingreso: null, salida: null, rol: 3,    depto: 4, meta: 5, mes: 6 };
+const LAYOUT_A_FECHAS = { ingreso: 2,    salida: 3,    rol: 5,    depto: 6, meta: 7, mes: 8 };
+const LAYOUT_OFC47    = { ingreso: 3,    salida: 4,    rol: null, depto: 5, meta: 6, mes: 7 };
+const LAYOUT_B        = { ingreso: null, salida: null, rol: null, depto: 3, meta: 4, mes: 5 };
+
 const SHEETS_CONFIG = [
-  { sheet: 'ALEIRA',          sucursal: 'Aleira',                   grupo: 'Easy Fit',        layout: 'A' },
-  { sheet: 'CAÑADAS',         sucursal: 'Cañadas',                  grupo: 'Easy Fit',        layout: 'A' },
-  { sheet: 'AVILA CAMACHO',   sucursal: 'Ávila Camacho',            grupo: 'Easy Fit',        layout: 'A' },
-  { sheet: 'ITESO',           sucursal: 'Iteso',                    grupo: 'Easy Fit',        layout: 'A' },
-  { sheet: 'CENTER',          sucursal: 'Center',                   grupo: 'Vivo 47',         layout: 'A' },
-  { sheet: 'VR',              sucursal: 'Valle Real',               grupo: 'Vivo 47',         layout: 'A', nuevoIngreso: true },
-  { sheet: 'GMT',             sucursal: 'Gourmetería',              grupo: 'Vivo 47',         layout: 'A', nuevoIngreso: true },
-  { sheet: ' NAC',            sucursal: 'Naciones Unidas',          grupo: 'Vivo 47',         layout: 'A', nuevoIngreso: true },
-  { sheet: 'OFC 47',          sucursal: 'Oficina Central Vivo47',   grupo: 'Oficina Central', layout: 'B' },
-  { sheet: ' GEB',            sucursal: 'GEB',                      grupo: 'GEB',             layout: 'B' },
-  { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', layout: 'B' },
+  { sheet: 'ALEIRA',          sucursal: 'Aleira',                   grupo: 'Easy Fit',        cols: LAYOUT_A },
+  { sheet: 'CAÑADAS',         sucursal: 'Cañadas',                  grupo: 'Easy Fit',        cols: LAYOUT_A },
+  { sheet: 'AVILA CAMACHO',   sucursal: 'Ávila Camacho',            grupo: 'Easy Fit',        cols: LAYOUT_A },
+  { sheet: 'ITESO',           sucursal: 'Iteso',                    grupo: 'Easy Fit',        cols: LAYOUT_A },
+  { sheet: 'CENTER',          sucursal: 'Center',                   grupo: 'Vivo 47',         cols: LAYOUT_A },
+  { sheet: 'VR',              sucursal: 'Valle Real',               grupo: 'Vivo 47',         cols: LAYOUT_A_FECHAS },
+  { sheet: 'GMT',             sucursal: 'Gourmetería',              grupo: 'Vivo 47',         cols: LAYOUT_A_FECHAS },
+  { sheet: ' NAC',            sucursal: 'Naciones Unidas',          grupo: 'Vivo 47',         cols: LAYOUT_A_FECHAS },
+  { sheet: 'OFC 47',          sucursal: 'Oficina Central Vivo47',   grupo: 'Oficina Central', cols: LAYOUT_OFC47 },
+  { sheet: ' GEB',            sucursal: 'GEB',                      grupo: 'GEB',             cols: LAYOUT_B },
+  { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', cols: LAYOUT_B },
 ];
+const ANIO_DASHBOARD = 2026;
+
+// Si la baja es de este día en adelante ("finales de mes"), ese mes todavía cuenta completo y
+// deja de contar hasta el mes siguiente. Antes de este día, ya no cuenta desde el mes de la baja.
+const DIA_FIN_DE_MES = 25;
+
+// Fecha de Salida -> índice del primer mes en que el colaborador YA NO cuenta (0=Enero).
+// null = sigue activo. Acepta dd/mm/aaaa y aaaa-mm-dd (Sheets a veces la exporta así).
+function mesSalidaIdx(raw){
+  const s = (raw||'').trim();
+  let dia, mes, anio, m;
+  if((m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/))){ dia = +m[1]; mes = +m[2]; anio = +m[3]; }
+  else if((m = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/))){ anio = +m[1]; mes = +m[2]; dia = +m[3]; }
+  else return null;
+  let idx = mes - 1;
+  if(dia >= DIA_FIN_DE_MES) idx++;
+  if(anio < ANIO_DASHBOARD) return 0;
+  if(anio > ANIO_DASHBOARD || idx > 11) return null;
+  return idx;
+}
+// ¿El colaborador cuenta en este mes? (mesSel null = acumulado: cuenta si estuvo al menos un mes)
+function activoEnMes(r, mesSel){
+  if(r.salidaMesIdx === null) return true;
+  return mesSel === null ? r.salidaMesIdx > 0 : mesSel < r.salidaMesIdx;
+}
 
 // Roles que cuentan como "Líder": gerentes de sucursal, líderes deportivos, líderes de turno y
 // capitanas/capitanes de Orden y Limpieza. Se compara sin acentos/mayúsculas para tolerar variantes
@@ -453,7 +489,7 @@ function esRenglonSuma(r){
 }
 // Renglon "Suma" (y "Avance") que cada hoja trae al final de su tabla: es la fuente oficial de
 // negocio para los totales mensuales de esa sucursal (meta acumulada + real por mes), sin importar
-// en que columna haya quedado por los distintos layouts. Formato: "Suma", meta, mes1..mes9.
+// en que columna haya quedado por los distintos layouts. Formato: "Suma", meta, mes1..mesN.
 function parseSumaRow(rows){
   for(const r of rows){
     const idx = esRenglonSuma(r);
@@ -493,21 +529,19 @@ function parseSheetRows(rows, cfg){
     // Un renglon sin nombre en medio de la tabla (ej. quedó un Departamento/Meta sin borrar del
     // todo) no debe cortar la lectura de los colaboradores que siguen: se salta y se sigue leyendo.
     if(!nombre) continue;
-    // layout 'A' = tiene columna Rol; layout 'B' = sin columna Rol (oficinas).
-    // cfg.nuevoIngreso = la hoja tiene una columna extra "Nuevo Ingreso" (fecha) metida antes de
-    // "Unidad de Negocio", lo que recorre una columna a la derecha todo lo demas.
-    let rol, depto, meta, monthStart, fechaIngresoRaw;
-    if(cfg.layout === 'A'){
-      if(cfg.nuevoIngreso){ fechaIngresoRaw = (r[2]||'').trim(); rol=(r[4]||'').trim(); depto=(r[5]||'').trim(); meta=Number(r[6])||0; monthStart=7; }
-      else { fechaIngresoRaw = ''; rol=(r[3]||'').trim(); depto=(r[4]||'').trim(); meta=Number(r[5])||0; monthStart=6; }
-    } else {
-      rol='N/A'; fechaIngresoRaw='';
-      if(cfg.nuevoIngreso){ depto=(r[4]||'').trim(); meta=Number(r[5])||0; monthStart=6; }
-      else { depto=(r[3]||'').trim(); meta=Number(r[4])||0; monthStart=5; }
-    }
+    const c = cfg.cols;
+    const celda = idx => idx === null ? '' : (r[idx]||'').trim();
+    const rol = c.rol === null ? 'N/A' : celda(c.rol);
+    const depto = celda(c.depto);
+    const meta = Number(r[c.meta])||0;
+    const fechaIngresoRaw = celda(c.ingreso);
+    const fechaSalidaRaw = celda(c.salida);
+    const salidaMesIdx = mesSalidaIdx(fechaSalidaRaw);
     const meses = [];
     for(let m=0;m<MESES_A_LEER;m++){
-      const v = r[monthStart+m];
+      const v = r[c.mes+m];
+      // Desde el mes de salida el colaborador ya no cuenta: esos meses quedan sin dato.
+      if(salidaMesIdx !== null && m >= salidaMesIdx){ meses.push(null); continue; }
       meses.push(v===undefined || v==='' ? null : Number(v));
     }
     const fechaNorm = quitarAcentos(fechaIngresoRaw).toLowerCase();
@@ -515,6 +549,7 @@ function parseSheetRows(rows, cfg){
     registros.push({
       sucursal: cfg.sucursal, grupo: cfg.grupo, nombre, rol, departamento: renombrarDepto(depto), meta, meses,
       esNuevoIngreso, fechaIngreso: esNuevoIngreso ? fechaIngresoRaw : null,
+      salidaMesIdx, fechaSalida: salidaMesIdx !== null ? fechaSalidaRaw : null,
     });
   }
   return { registros, resumen: parseSumaRow(rows) };
@@ -800,7 +835,8 @@ function getFiltered(){
   const critico = UMBRAL_CRITICO;
   const sobresaliente = UMBRAL_SOBRESALIENTE;
   const mesSel = mesSelValue();
-  return withMonthCalc(baseFilter(), mesSel, critico, sobresaliente);
+  // Colaboradores dados de baja: dejan de aparecer a partir de su mes de salida.
+  return withMonthCalc(baseFilter().filter(r => activoEnMes(r, mesSel)), mesSel, critico, sobresaliente);
 }
 
 // Aplica el filtro de Estado (Todos / Cumplieron meta / Mejora) -- usar solo para la tabla
@@ -1070,6 +1106,9 @@ function renderDetalleIndividual(critico, sobresaliente){
     `Detalle Individual — ${persona.nombre} (${persona.sucursal} · ${persona.rol})`;
 
   const filas = RAW.meses.map((mes, idx) => {
+    if(persona.salidaMesIdx !== null && idx >= persona.salidaMesIdx){
+      return `<tr><td>${mes}</td><td>-</td><td>-</td><td>-</td><td>Baja (${persona.fechaSalida})</td></tr>`;
+    }
     const v = persona.meses[idx];
     const avance = v === null ? null : (persona.meta > 0 ? v / persona.meta : null);
     const clasif = clasificar(avance, critico, sobresaliente);
