@@ -174,6 +174,13 @@
   .badge.SinDatos{background:#eee;color:#888;}
   .table-wrap{overflow-x:auto;max-height:420px;overflow-y:auto;}
   .table-wrap.completa{max-height:none;overflow-y:visible;}
+  /* Semáforo en Detalle por Colaborador: verde = Sobresaliente, amarillo = En meta, rojo = Mejora */
+  #tblColaboradores tr.fila-Sobresaliente td{background:#e6f4ea;}
+  #tblColaboradores tr.fila-EnMeta td{background:#fff6d6;}
+  #tblColaboradores tr.fila-Critico td{background:#fbe4e4;}
+  #tblColaboradores .badge.Sobresaliente{background:#2e7d32;color:#fff;}
+  #tblColaboradores .badge.EnMeta{background:#f2c200;color:#3d3000;}
+  #tblColaboradores .badge.Critico{background:#c62828;color:#fff;}
   .loading,.error{padding:60px;text-align:center;color:var(--muted);}
   .error{color:var(--critico);}
 </style>
@@ -1076,14 +1083,18 @@ function render(){
 
   renderDetalleIndividual(critico, sobresaliente);
 
-  const detalle = aplicarFiltroEstado(registros).sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
+  // Orden: Sobresaliente (verde) -> En meta (amarillo) -> Mejora (rojo) -> Sin datos; dentro de cada
+  // grupo, de mayor a menor % de avance.
+  const ORDEN_CLASIF = {'Sobresaliente':0, 'En meta':1, 'Critico':2, 'Sin datos':3};
+  const detalle = aplicarFiltroEstado(registros).sort((a,b) =>
+    (ORDEN_CLASIF[a.clasificacion] - ORDEN_CLASIF[b.clasificacion]) || ((b.avance ?? -1) - (a.avance ?? -1)));
   // Con unidad de negocio, sucursal o área seleccionada se muestra la lista completa (sin scroll)
   // para poder tomar captura de todo el equipo; sin filtro se mantiene la altura limitada.
   document.getElementById('wrapColaboradores').classList.toggle('completa',
     grupoSel.length > 0 || sucSel.length > 0 || areaSel.length > 0);
   renderTable('tblColaboradores',
     ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación','Nuevo Ingreso'],
-    detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}${esLider(r.rol, r.sucursal) ? ' <span class="badge EnMeta" style="padding:1px 8px;">Líder</span>' : ''}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td><td>${r.esNuevoIngreso ? r.fechaIngreso : '-'}</td></tr>`));
+    detalle.map(r => `<tr class="fila-${r.clasificacion.replace(' ','')}"><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}${esLider(r.rol, r.sucursal) ? ' <span class="badge EnMeta" style="padding:1px 8px;">Líder</span>' : ''}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td><td>${r.esNuevoIngreso ? r.fechaIngreso : '-'}</td></tr>`));
 
   // Linea de acumulado mensual (% de cumplimiento acumulado): SIEMPRE todo el rango disponible,
   // independiente del filtro de Mes.
