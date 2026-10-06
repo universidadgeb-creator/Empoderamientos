@@ -173,6 +173,7 @@
   .badge.EnMeta{background:var(--enmetaBg);color:var(--enmeta);}
   .badge.SinDatos{background:#eee;color:#888;}
   .table-wrap{overflow-x:auto;max-height:420px;overflow-y:auto;}
+  .table-wrap.completa{max-height:none;overflow-y:visible;}
   .loading,.error{padding:60px;text-align:center;color:var(--muted);}
   .error{color:var(--critico);}
 </style>
@@ -291,7 +292,7 @@
 
   <section>
     <h2>Detalle por Colaborador</h2>
-    <div class="table-wrap"><table id="tblColaboradores"><thead></thead><tbody></tbody></table></div>
+    <div class="table-wrap" id="wrapColaboradores"><table id="tblColaboradores"><thead></thead><tbody></tbody></table></div>
   </section>
 
 </div>
@@ -1076,6 +1077,10 @@ function render(){
   renderDetalleIndividual(critico, sobresaliente);
 
   const detalle = aplicarFiltroEstado(registros).sort((a,b) => (a.avance ?? 99) - (b.avance ?? 99));
+  // Con unidad de negocio, sucursal o área seleccionada se muestra la lista completa (sin scroll)
+  // para poder tomar captura de todo el equipo; sin filtro se mantiene la altura limitada.
+  document.getElementById('wrapColaboradores').classList.toggle('completa',
+    grupoSel.length > 0 || sucSel.length > 0 || areaSel.length > 0);
   renderTable('tblColaboradores',
     ['Nombre','Sucursal','Rol','Área','Meta','Real','% Avance','Clasificación','Nuevo Ingreso'],
     detalle.map(r => `<tr><td>${r.nombre}</td><td>${r.sucursal}</td><td>${r.rol}${esLider(r.rol, r.sucursal) ? ' <span class="badge EnMeta" style="padding:1px 8px;">Líder</span>' : ''}</td><td>${r.departamento||'Sin datos'}</td><td>${r.metaAcumulada}</td><td>${num(r.totalReal)}</td><td>${pct(r.avance)}</td><td>${badge(r.clasificacion)}</td><td>${r.esNuevoIngreso ? r.fechaIngreso : '-'}</td></tr>`));
