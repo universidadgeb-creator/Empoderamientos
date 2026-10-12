@@ -319,7 +319,7 @@ const UMBRAL_SOBRESALIENTE = 1.20; // arriba de esto: "Sobresaliente"
 // Columnas de cada hoja (índice 0 = columna A). Las hojas no comparten estructura:
 //  - LAYOUT_A:       B Nombre, C Unidad, D Rol, E Depto, F Meta, G.. meses
 //  - LAYOUT_A_FECHAS: B Nombre, C Nuevo Ingreso, D Salida, E Unidad, F Rol, G Depto, H Meta, I.. meses
-//  - LAYOUT_OFC47:   B Nombre, C Unidad, D Fecha inicio, E Salida, F Depto, G Meta, H.. meses
+//  - LAYOUT_OFC47 (también GEB):   B Nombre, C Unidad, D Fecha inicio, E Salida, F Depto, G Meta, H.. meses
 //  - LAYOUT_B:       B Nombre, C Unidad, D Depto, E Meta, F.. meses
 // ingreso/salida/rol = null si la hoja no tiene esa columna.
 const LAYOUT_A        = { ingreso: null, salida: null, rol: 3,    depto: 4, meta: 5, mes: 6 };
@@ -337,7 +337,7 @@ const SHEETS_CONFIG = [
   { sheet: 'GMT',             sucursal: 'Gourmetería',              grupo: 'Vivo 47',         cols: LAYOUT_A_FECHAS },
   { sheet: ' NAC',            sucursal: 'Naciones Unidas',          grupo: 'Vivo 47',         cols: LAYOUT_A_FECHAS },
   { sheet: 'OFC 47',          sucursal: 'Oficina Central Vivo47',   grupo: 'Oficina Central', cols: LAYOUT_OFC47 },
-  { sheet: ' GEB',            sucursal: 'GEB',                      grupo: 'GEB',             cols: LAYOUT_B },
+  { sheet: ' GEB',            sucursal: 'GEB',                      grupo: 'GEB',             cols: LAYOUT_OFC47 }, // misma estructura: Inicio/Salida en D/E
   { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', cols: LAYOUT_B },
 ];
 const ANIO_DASHBOARD = 2026;
