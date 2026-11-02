@@ -319,16 +319,18 @@ const UMBRAL_SOBRESALIENTE = 1.20; // arriba de esto: "Sobresaliente"
 // Columnas de cada hoja (índice 0 = columna A). Las hojas no comparten estructura:
 //  - LAYOUT_A:       B Nombre, C Unidad, D Rol, E Depto, F Meta, G.. meses
 //  - LAYOUT_A_FECHAS: B Nombre, C Nuevo Ingreso, D Salida, E Unidad, F Rol, G Depto, H Meta, I.. meses
-//  - LAYOUT_OFC47 (también GEB):   B Nombre, C Unidad, D Fecha inicio, E Salida, F Depto, G Meta, H.. meses
+//  - LAYOUT_A_INICIO_SALIDA (Aleira): B Nombre, C Unidad, D Inicio, E Salida, F Rol, G Depto, H Meta, I.. meses
+//  - LAYOUT_OFC47 (también GEB y OFC Easy Fit):   B Nombre, C Unidad, D Fecha inicio, E Salida, F Depto, G Meta, H.. meses
 //  - LAYOUT_B:       B Nombre, C Unidad, D Depto, E Meta, F.. meses
 // ingreso/salida/rol = null si la hoja no tiene esa columna.
 const LAYOUT_A        = { ingreso: null, salida: null, rol: 3,    depto: 4, meta: 5, mes: 6 };
 const LAYOUT_A_FECHAS = { ingreso: 2,    salida: 3,    rol: 5,    depto: 6, meta: 7, mes: 8 };
+const LAYOUT_A_INICIO_SALIDA = { ingreso: 3, salida: 4, rol: 5, depto: 6, meta: 7, mes: 8 };
 const LAYOUT_OFC47    = { ingreso: 3,    salida: 4,    rol: null, depto: 5, meta: 6, mes: 7 };
 const LAYOUT_B        = { ingreso: null, salida: null, rol: null, depto: 3, meta: 4, mes: 5 };
 
 const SHEETS_CONFIG = [
-  { sheet: 'ALEIRA',          sucursal: 'Aleira',                   grupo: 'Easy Fit',        cols: LAYOUT_A },
+  { sheet: 'ALEIRA',          sucursal: 'Aleira',                   grupo: 'Easy Fit',        cols: LAYOUT_A_INICIO_SALIDA },
   { sheet: 'CAÑADAS',         sucursal: 'Cañadas',                  grupo: 'Easy Fit',        cols: LAYOUT_A },
   { sheet: 'AVILA CAMACHO',   sucursal: 'Ávila Camacho',            grupo: 'Easy Fit',        cols: LAYOUT_A },
   { sheet: 'ITESO',           sucursal: 'Iteso',                    grupo: 'Easy Fit',        cols: LAYOUT_A },
@@ -338,7 +340,7 @@ const SHEETS_CONFIG = [
   { sheet: ' NAC',            sucursal: 'Naciones Unidas',          grupo: 'Vivo 47',         cols: LAYOUT_A_FECHAS },
   { sheet: 'OFC 47',          sucursal: 'Oficina Central Vivo47',   grupo: 'Oficina Central', cols: LAYOUT_OFC47 },
   { sheet: ' GEB',            sucursal: 'GEB',                      grupo: 'GEB',             cols: LAYOUT_OFC47 }, // misma estructura: Inicio/Salida en D/E
-  { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', cols: LAYOUT_B },
+  { sheet: 'OFC Easy Fit ',   sucursal: 'Oficina Central Easy Fit', grupo: 'Oficina Central', cols: LAYOUT_OFC47 },
 ];
 const ANIO_DASHBOARD = 2026;
 
